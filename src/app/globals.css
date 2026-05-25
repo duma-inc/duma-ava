@@ -1,0 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* ── Design System: DUMA ── */
+
+:root {
+  --primary: #FDA91E;
+  --primary-dark: #D88A00;
+  --primary-darker: #7A4A12;
+  --surface: #1C1C1C;
+  --background: #303030;
+  --background-dark: #000000;
+  --text-primary: #F4E3C1;
+  --text-on-primary: #000000;
+  --success: #10B981;
+  --info: #3B82F6;
+  --warning: #FDA91E;
+  --danger: #EF4444;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-darker: var(--primary-darker);
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-background-dark: var(--background-dark);
+  --color-text-primary: var(--text-primary);
+  --color-text-on-primary: var(--text-on-primary);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: 'Inter', sans-serif;
+}
+
+/* ── Global Styles ── */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar Styling ── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-darker);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+/* ── Selection ── */
+
+::selection {
+  background: var(--primary);
+  color: var(--text-on-primary);
+}
+
+/* ── Smooth transitions globally ── */
+
+a, button {
+  transition: all 0.2s ease;
+}
+
+/* ── react-day-picker overrides (v9) ── */
+
+.rdp-root {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--primary-darker);
+  --rdp-today-color: var(--primary);
+  --rdp-day-height: 52px;
+  --rdp-day-width: 44px;
+  --rdp-day_button-height: 40px;
+  --rdp-day_button-width: 40px;
+  --rdp-day_button-border-radius: 12px;
+  --rdp-day_button-border: 2px solid transparent;
+  --rdp-selected-border: 2px solid var(--primary);
+  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  color: var(--text-primary);
+}
+
+.rdp-months {
+  width: 100%;
+  max-width: 100% !important;
+  justify-content: center;
+}
+
+.rdp-month {
+  width: 100%;
+}
+
+/* table-layout: fixed + width 100% = 7 colunas iguais */
+.rdp-month_grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+/* cabeçalho: cada th ocupa exatamente 1/7 */
+.rdp-weekday {
+  width: calc(100% / 7);
+  text-align: center;
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 0 14px 0;
+}
+
+/* célula do dia: sem padding extra — altura vem de --rdp-day-height */
+.rdp-day {
+  text-align: center;
+  vertical-align: middle;
+  padding: 0;
+}
+
+/* botão centralizado na célula */
+.rdp-day_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.rdp-day_button:hover:not([disabled]) {
+  background-color: var(--primary-darker) !important;
+  color: var(--primary) !important;
+}
+
+/* ── Dia selecionado — igual ao circle da view Semana ── */
+.rdp-selected .rdp-day_button {
+  background: var(--primary) !important;
+  color: var(--text-on-primary) !important;
+  font-weight: 700;
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 10px rgba(253, 169, 30, 0.4);
+  transform: scale(1.1);
+}
+
+/* ── Hoje (não selecionado) — bg-primary-darker/30 + borda, igual à Semana ── */
+.rdp-today:not(.rdp-outside):not(.rdp-selected) .rdp-day_button {
+  color: var(--primary) !important;
+  font-weight: 800;
+  background-color: rgba(122, 74, 18, 0.3) !important;
+  border: 1px solid var(--primary-darker) !important;
+}
+
+/* Dias fora do mês */
+.rdp-outside {
+  opacity: 0.3;
+}
+
+/* ── Cabeçalho do mês (título + navegação) ── */
+.rdp-caption_label {
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-transform: capitalize;
+}
+
+.rdp-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.rdp-chevron {
+  fill: var(--primary) !important;
+}
+
+.rdp-button_next,
+.rdp-button_previous {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.rdp-button_next:hover,
+.rdp-button_previous:hover {
+  background: var(--primary-darker) !important;
+}
+
