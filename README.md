@@ -1,2 +1,2 @@
 # duma-frontend-ava
-Ambiente de aprendizagem do sistema Duma
+Ambiente web de aprendizagem do sistema Duma
