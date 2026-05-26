@@ -66,11 +66,6 @@ export default function ConteudoPage() {
           />
         </div>
       </div>
-
-      <div className="rounded-2xl border border-primary-darker bg-surface p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-bold text-primary mb-4">Texto de Teste Interativo</h2>
-        <InteractiveText text={sampleText} />
-      </div>
     </div>
   );
 }

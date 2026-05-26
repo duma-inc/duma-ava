@@ -105,7 +105,7 @@ export default function Sidebar() {
 
         {/* Bottom actions */}
         <div className="px-3 pb-4 flex flex-col gap-1 border-t border-primary-darker pt-4">
-          <Link
+          {/* <Link
             href="/configuracoes"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
               pathname.startsWith("/configuracoes")
@@ -115,7 +115,7 @@ export default function Sidebar() {
           >
             <Cog6ToothIcon className="w-5 h-5" />
             <span>Configurações</span>
-          </Link>
+          </Link> */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-primary-darker hover:text-danger hover:bg-danger/10 transition-all duration-200 cursor-pointer"
