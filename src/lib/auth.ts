@@ -58,6 +58,12 @@ const config: NextAuthConfig = {
           scope: "openid profile email offline_access",
         },
       },
+      token: {
+        params: {
+          client_id: process.env.KEYCLOAK_CLIENT_ID!,
+          client_secret: process.env.KEYCLOAK_CLIENT_SECRET!,
+        },
+      },
     }),
   ],
 
