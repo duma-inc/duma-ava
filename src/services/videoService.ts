@@ -9,6 +9,9 @@ type VideoApiItem = {
   thumbnailUrl?: string;
   durationLabel?: string;
   description?: string;
+  externalUrl?: string;
+  watchUrl?: string;
+  url?: string;
 };
 
 type RawVideoCatalogResponse =
@@ -47,6 +50,7 @@ function mapVideoItem(item: VideoApiItem): VideoItem | null {
     thumbnailUrl,
     durationLabel,
     description: item.description?.trim() || undefined,
+    externalUrl: item.externalUrl?.trim() || item.watchUrl?.trim() || item.url?.trim() || undefined,
   };
 }
 

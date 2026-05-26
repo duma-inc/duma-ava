@@ -121,6 +121,15 @@ export default function VideoPlayerPage({ params }: PageProps) {
             {video.description}
           </p>
         )}
+
+        <a
+          href={video.externalUrl || video.embedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-black transition-all hover:brightness-110"
+        >
+          Abrir no navegador
+        </a>
       </div>
     </div>
   );

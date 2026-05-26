@@ -20,6 +20,7 @@ export interface AgendaEvent {
   meetingUrl?: string;
   recordingUrl?: string;
   status?: string;
+  lessonTitle?: string;
 }
 
 const typeConfig: Record<

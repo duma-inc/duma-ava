@@ -3,12 +3,15 @@ import ProgressBar from "./ProgressBar";
 
 interface MetricBarProps {
   label: string;
-  value: number; // 0–100
+  value: number | string; // 0–100 ou texto
+  percent?: number; // porcentagem para a barra
   color: string;
   icon: ReactNode;
+  suffix?: string;
 }
 
-export default function MetricBar({ label, value, color, icon }: MetricBarProps) {
+export default function MetricBar({ label, value, percent, color, icon, suffix = "%" }: MetricBarProps) {
+  const barPercent = percent !== undefined ? percent : (typeof value === 'number' ? Math.min(100, Math.max(0, value)) : 100);
   return (
     <div className="mb-4 last:mb-0">
       <div className="flex items-center mb-1.5 gap-2">
@@ -22,10 +25,10 @@ export default function MetricBar({ label, value, color, icon }: MetricBarProps)
           {label}
         </span>
         <span className="text-sm font-bold" style={{ color }}>
-          {value}%
+          {value}{suffix}
         </span>
       </div>
-      <ProgressBar value={value} color={color} height={8} />
+      <ProgressBar value={barPercent} color={color} height={8} />
     </div>
   );
 }

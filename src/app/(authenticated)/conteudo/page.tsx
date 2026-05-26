@@ -45,14 +45,14 @@ export default function ConteudoPage() {
           />
           <CardButton
             title="Games"
-            subtitle="Pratique jogando"
+            subtitle="Aprenda jogando"
             color="#FDA91E"
             icon={<PuzzlePieceIcon className="w-9 h-9" />}
             href="/conteudo/games"
           />
           <CardButton
-            title="Notícias"
-            subtitle="Fique por dentro"
+            title="DumaNews"
+            subtitle="Notícias globais"
             color="#D88A00"
             icon={<NewspaperIcon className="w-9 h-9" />}
             href="/conteudo/dumanews"
@@ -67,7 +67,7 @@ export default function ConteudoPage() {
         </div>
       </div>
 
-      <div className="bg-[#1C1C1C] border border-surface rounded-2xl p-5 sm:p-6 shadow-sm">
+      <div className="rounded-2xl border border-primary-darker bg-surface p-5 shadow-sm sm:p-6">
         <h2 className="text-xl font-bold text-primary mb-4">Texto de Teste Interativo</h2>
         <InteractiveText text={sampleText} />
       </div>

@@ -2,12 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeftIcon, BookOpenIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowDownTrayIcon,
+  BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
+import LessonChapterCard from "@/components/ui/LessonChapterCard";
 import { fetchLessonBooks } from "@/services/lessonBookService";
 import { LessonBook } from "@/types/lesson";
 
 export default function ApostilaPage() {
   const [lessonBooks, setLessonBooks] = useState<LessonBook[]>([]);
+  const [activeLessonId, setActiveLessonId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -22,6 +29,7 @@ export default function ApostilaPage() {
         const data = await fetchLessonBooks();
         if (!isMounted) return;
         setLessonBooks(data);
+        setActiveLessonId(data[0]?.id || "");
       } catch {
         if (!isMounted) return;
         setHasError(true);
@@ -39,10 +47,18 @@ export default function ApostilaPage() {
     };
   }, []);
 
-  const books = useMemo(() => lessonBooks, [lessonBooks]);
+  const activeLessonIndex = useMemo(
+    () => Math.max(lessonBooks.findIndex((lesson) => lesson.id === activeLessonId), 0),
+    [activeLessonId, lessonBooks]
+  );
+
+  const activeLesson = useMemo(
+    () => lessonBooks.find((lesson) => lesson.id === activeLessonId) || lessonBooks[0],
+    [activeLessonId, lessonBooks]
+  );
 
   return (
-    <div className="flex flex-col gap-6 pb-10 max-w-2xl mx-auto w-full">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-10">
       <div className="flex items-center gap-3">
         <Link
           href="/conteudo"
@@ -55,62 +71,94 @@ export default function ApostilaPage() {
         </h1>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {isLoading ? (
-          <p className="text-primary-dark text-sm">Carregando apostilas...</p>
-        ) : hasError ? (
-          <p className="text-primary-dark text-sm">Não foi possível carregar as apostilas agora.</p>
-        ) : books.length === 0 ? (
-          <p className="text-primary-dark text-sm">Nenhuma apostila disponível.</p>
-        ) : books.map((book) => (
-          <div
-            key={book.id}
-            className="bg-surface rounded-2xl border border-primary-darker p-5 sm:p-6 shadow-md flex flex-col gap-4"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20">
-                <BookOpenIcon className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-text-primary truncate">{book.title}</h2>
-                {book.subtitle && (
-                  <p className="text-xs text-primary-dark mt-1 line-clamp-2 leading-relaxed">
-                    {book.subtitle}
-                  </p>
-                )}
-              </div>
-            </div>
+      {isLoading ? (
+        <p className="text-sm text-primary-dark">Carregando acervo...</p>
+      ) : hasError ? (
+        <p className="text-sm text-primary-dark">Não foi possível carregar as apostilas agora.</p>
+      ) : !activeLesson ? (
+        <p className="text-sm text-primary-dark">Nenhuma apostila disponível.</p>
+      ) : (
+        <>
+          <div className="rounded-[18px] border border-primary-darker bg-surface p-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveLessonId(lessonBooks[activeLessonIndex - 1]?.id || activeLesson.id)}
+                disabled={activeLessonIndex === 0}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary bg-primary/15 text-primary disabled:cursor-not-allowed disabled:border-[#2E2E2E] disabled:bg-[#242424] disabled:text-[#6A655A] disabled:opacity-50"
+              >
+                <ChevronLeftIcon className="h-5 w-5" />
+              </button>
 
-            <div className="flex flex-col gap-2.5 mt-2 border-t border-primary-darker/30 pt-4">
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">
-                Capítulos
-              </span>
-              <div className="flex flex-col gap-2">
-                {book.chapters.map((ch) => (
-                  <Link
-                    key={ch.id}
-                    href={`/conteudo/apostila/${book.id}/${ch.id}`}
-                    className="flex items-center gap-3 p-3 bg-[#1C1C1C] hover:bg-primary-darker/10 rounded-xl border border-primary-darker/50 hover:border-primary transition-all cursor-pointer group"
-                  >
-                    <BookOpenIcon className="w-5 h-5 text-primary flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors truncate">
-                        {ch.title}
-                      </h4>
-                      <p className="text-xs text-primary-dark line-clamp-1 mt-0.5 leading-relaxed">
-                        {ch.summary}
-                      </p>
-                    </div>
-                    <span className="text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                      Ler →
-                    </span>
-                  </Link>
-                ))}
+              <div className="min-w-0 flex-1 text-center">
+                <p className="mb-1 text-xs font-bold uppercase text-[#8F8A7E]">Lesson ativa</p>
+                <h2 className="truncate text-base font-extrabold text-text-primary">
+                  {activeLesson.title}
+                </h2>
+                <p className="mt-1 text-xs text-primary-dark">
+                  {activeLessonIndex + 1} de {lessonBooks.length}
+                </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveLessonId(lessonBooks[activeLessonIndex + 1]?.id || activeLesson.id)}
+                disabled={activeLessonIndex === lessonBooks.length - 1}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary bg-primary/15 text-primary disabled:cursor-not-allowed disabled:border-[#2E2E2E] disabled:bg-[#242424] disabled:text-[#6A655A] disabled:opacity-50"
+              >
+                <ChevronRightIcon className="h-5 w-5" />
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="rounded-[22px] border border-primary-darker bg-surface p-5 shadow-md sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="mb-2 text-2xl font-extrabold text-text-primary">
+                  {activeLesson.title}
+                </h2>
+                {activeLesson.subtitle && (
+                  <p className="text-sm leading-6 text-[#D2B98B]">{activeLesson.subtitle}</p>
+                )}
+              </div>
+
+              <a
+                href={activeLesson.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary bg-primary/15 text-primary transition-all hover:brightness-110"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
+              <BookOpenIcon className="h-6 w-6 text-primary" />
+              <p className="text-sm text-[#D2B98B]">
+                Selecione um capítulo para ler online ou abra o PDF para imprimir e estudar fora do navegador.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-xl font-extrabold text-primary">Capítulos da apostila</h3>
+            <div className="space-y-3">
+              {activeLesson.chapters.map((chapter) => (
+                <LessonChapterCard
+                  key={chapter.id}
+                  href={`/conteudo/apostila/${activeLesson.id}/${chapter.id}`}
+                  order={chapter.order}
+                  title={chapter.title}
+                  summary={chapter.summary}
+                />
+              ))}
+              {activeLesson.chapters.length === 0 && (
+                <p className="text-sm text-primary-dark">Esta apostila ainda não possui capítulos cadastrados.</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

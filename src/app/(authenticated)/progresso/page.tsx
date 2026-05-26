@@ -12,21 +12,26 @@ import {
 } from "recharts";
 import GradeCard from "@/components/ui/GradeCard";
 import MetricBar from "@/components/ui/MetricBar";
-import FeedbackCard, { Feedback } from "@/components/ui/FeedbackCard";
+import NotificationCard, { NotificationItem } from "@/components/ui/NotificationCard";
 import {
   BookOpenIcon,
   AcademicCapIcon,
-  UserGroupIcon,
   ClipboardDocumentIcon,
-  FolderOpenIcon,
+  CalendarIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
-import { useExerciseContext } from "@/store/ExerciseContext";
 import api from "@/lib/api";
 
-// ── Feedbacks ──
-const feedbacks: Feedback[] = [
-  { id: "1", author: "Teacher Matheus", text: "Vamos pra cima. Só pare quando estiver fluente!", date: "02/05", sentiment: "positive" },
-];
+interface DashboardMetrics {
+  weeklyGrades: { weekLabel: string; average: number }[];
+  skillsScores: { skillId: number; skillName: string; averageScore: number }[];
+  metrics: {
+    classAttendanceRate: number;
+    dailyExercisesPaceRate: number;
+    totalExercisesSubmitted: number;
+    completedLessonsCount: number;
+  };
+}
 
 function SectionTitle({ title }: { title: string }) {
   return (
@@ -35,61 +40,50 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 export default function ProgressoPage() {
-  const { enrollments } = useExerciseContext();
-  const [skills, setSkills] = useState<any[]>([]);
+  const [metricsData, setMetricsData] = useState<DashboardMetrics | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  async function loadData() {
+    try {
+      setLoadError(null);
+      const [metricsRes, notifsRes] = await Promise.all([
+        api.get<DashboardMetrics>("/students/me/dashboard-metrics"),
+        api.get<NotificationItem[]>("/notifications"),
+      ]);
+
+      setMetricsData(metricsRes.data);
+      setNotifications(notifsRes.data || []);
+    } catch (err: any) {
+      console.error("[Progresso] Error fetching data:", err);
+      setLoadError(
+        err?.response?.status
+          ? `Erro ${err.response.status} ao carregar dados de progresso`
+          : err?.message || "Erro ao carregar dados de progresso"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadSkills() {
-      try {
-        const res = await api.get("/skills");
-        setSkills(res.data || []);
-      } catch (err) {
-        console.error("[Progresso] Error fetching skills:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadSkills();
+    loadData();
   }, []);
 
-  // Cross skills with user enrollments
-  const mappedCursos = skills.map((skill) => {
-    const enrollment = enrollments.find((e) => e.skillId === skill.id);
-    const progress = enrollment ? enrollment.progressPercentage || 0 : 0;
-    const grade = progress / 10;
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+    }
+  };
 
-    return {
-      id: skill.id,
-      name: skill.name,
-      grade,
-      color: enrollment ? "#FDA91E" : "#7A4A12",
-    };
-  });
-
-  // Dynamically calculate metrics
-  const completedCount = enrollments.filter(e => e.status === "COMPLETED").length;
-  const activeCount = enrollments.filter(e => e.status === "ACTIVE").length;
-  const totalExercisesPercent = enrollments.length > 0
-    ? Math.round(enrollments.reduce((acc, curr) => acc + (curr.progressPercentage || 0), 0) / enrollments.length)
-    : 0;
-
-  const metricas = [
-    { label: "Frequência de Prática", value: enrollments.length > 0 ? 95 : 0, color: "#FDA91E" },
-    { label: "Exercícios Diários", value: totalExercisesPercent, color: "#D88A00" },
-    { label: "Matérias Ativas", value: activeCount > 0 ? 100 : 0, color: "#FDA91E" },
-    { label: "Matérias Concluídas", value: completedCount > 0 ? 100 : 0, color: "#D88A00" },
-  ];
-
-  const chartData = enrollments.length > 0
-    ? [
-        { name: "S1", nota: 5.0 },
-        { name: "S2", nota: 5.5 },
-        { name: "S3", nota: 6.0 },
-        { name: "S4", nota: 7.0 },
-        { name: "S5", nota: (totalExercisesPercent / 10) || 5.0 },
-        { name: "S6", nota: (totalExercisesPercent / 10) || 5.0 },
-      ]
+  const chartData = metricsData?.weeklyGrades && metricsData.weeklyGrades.length > 0
+    ? metricsData.weeklyGrades.map((w) => ({ name: w.weekLabel, nota: w.average }))
     : [
         { name: "S1", nota: 0 },
         { name: "S2", nota: 0 },
@@ -98,6 +92,41 @@ export default function ProgressoPage() {
         { name: "S5", nota: 0 },
         { name: "S6", nota: 0 },
       ];
+
+  const metricas = [
+    {
+      label: "Frequência de Prática",
+      value: metricsData?.metrics?.classAttendanceRate ?? 0,
+      percent: metricsData?.metrics?.classAttendanceRate ?? 0,
+      color: "#FDA91E",
+      icon: <AcademicCapIcon className="w-4 h-4 text-[#FDA91E]" />,
+      suffix: "%",
+    },
+    {
+      label: "Exercícios Diários",
+      value: metricsData?.metrics?.dailyExercisesPaceRate ?? 0,
+      percent: metricsData?.metrics?.dailyExercisesPaceRate ?? 0,
+      color: "#D88A00",
+      icon: <CalendarIcon className="w-4 h-4 text-[#D88A00]" />,
+      suffix: "%",
+    },
+    {
+      label: "Exercícios Enviados",
+      value: metricsData?.metrics?.totalExercisesSubmitted ?? 0,
+      percent: 100,
+      color: "#FDA91E",
+      icon: <ClipboardDocumentIcon className="w-4 h-4 text-[#FDA91E]" />,
+      suffix: "",
+    },
+    {
+      label: "Lessons Concluídas",
+      value: metricsData?.metrics?.completedLessonsCount ?? 0,
+      percent: 100,
+      color: "#D88A00",
+      icon: <CheckIcon className="w-4 h-4 text-[#D88A00]" />,
+      suffix: "",
+    },
+  ];
 
   if (loading) {
     return (
@@ -113,6 +142,12 @@ export default function ProgressoPage() {
       <p className="text-base text-primary-dark mb-1">
         Acompanhe seu desempenho geral
       </p>
+
+      {loadError && (
+        <div className="bg-surface rounded-2xl p-4 border border-red-500 text-center text-text-primary text-sm mb-4">
+          {loadError}
+        </div>
+      )}
 
       {/* Gráfico de evolução */}
       <SectionTitle title="Evolução das Notas" />
@@ -153,50 +188,49 @@ export default function ProgressoPage() {
 
       {/* Score por Curso */}
       <SectionTitle title="Score por Matéria" />
-      {mappedCursos.length === 0 ? (
+      {!metricsData?.skillsScores || metricsData.skillsScores.length === 0 ? (
         <div className="bg-surface rounded-2xl p-6 border border-primary-darker shadow-md text-center text-text-primary text-sm">
-          Nenhuma matéria cadastrada no sistema.
+          Nenhum score por matéria registrado.
         </div>
       ) : (
-        mappedCursos.map((c) => (
+        metricsData.skillsScores.map((c) => (
           <GradeCard
-            key={c.id}
-            courseName={c.name}
-            grade={c.grade}
-            color={c.color}
-            icon={<BookOpenIcon className="w-[22px] h-[22px]" style={{ color: c.color }} />}
+            key={c.skillId}
+            courseName={c.skillName}
+            grade={c.averageScore > 10 ? c.averageScore / 10 : c.averageScore}
+            color="#FDA91E"
+            icon={<BookOpenIcon className="w-[22px] h-[22px]" style={{ color: "#FDA91E" }} />}
           />
         ))
       )}
 
       {/* Métricas do Curso */}
-      {/*<SectionTitle title="Métricas de Estudo" />
+      <SectionTitle title="Métricas de Estudo" />
       <div className="bg-surface rounded-2xl p-4 border border-primary-darker shadow-md">
-        {metricas.map((m, i) => (
+        {metricas.map((m) => (
           <MetricBar
             key={m.label}
             label={m.label}
             value={m.value}
+            percent={m.percent}
             color={m.color}
-            icon={
-              [
-                <AcademicCapIcon key="0" className="w-4 h-4" style={{ color: m.color }} />,
-                <FolderOpenIcon key="1" className="w-4 h-4" style={{ color: m.color }} />,
-                <svg key="2" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke={m.color} strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>,
-                <ClipboardDocumentIcon key="3" className="w-4 h-4" style={{ color: m.color }} />,
-              ][i]
-            }
+            icon={m.icon}
+            suffix={m.suffix}
           />
         ))}
-      </div>*/}
+      </div>
 
-      {/* Feedbacks */}
-      <SectionTitle title="Feedbacks" />
-      {feedbacks.map((f) => (
-        <FeedbackCard key={f.id} feedback={f} />
-      ))}
+      {/* Notificações */}
+      <SectionTitle title="Notificações" />
+      {notifications.length === 0 ? (
+        <div className="bg-surface rounded-2xl p-6 border border-primary-darker shadow-md text-center text-text-primary text-sm">
+          Nenhuma notificação recebida.
+        </div>
+      ) : (
+        notifications.map((n) => (
+          <NotificationCard key={n.id} notification={n} onRead={handleMarkAsRead} />
+        ))
+      )}
     </div>
   );
 }

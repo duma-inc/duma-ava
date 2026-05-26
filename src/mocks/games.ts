@@ -1,4 +1,4 @@
-import { SentenceBuilderPack } from '../types/game';
+import { DumaQuizPack, SentenceBuilderPack } from '../types/game';
 
 export const sentenceBuilderPacks: SentenceBuilderPack[] = [
   {
@@ -82,6 +82,73 @@ export const sentenceBuilderPacks: SentenceBuilderPack[] = [
         id: 'sb-w3-5',
         prompt: 'Monte a frase final.',
         sentence: 'Practice becomes easier when the structure is clear',
+      },
+    ],
+  },
+];
+
+export const dumaQuizPacks: DumaQuizPack[] = [
+  {
+    id: 'duma-quiz-week-1',
+    title: 'Duma Quiz',
+    weekLabel: 'Semana 1',
+    description: 'Perguntas básicas sobre vocabulário e gramática do nível iniciante.',
+    questions: [
+      {
+        id: 'dq-w1-1',
+        question: 'What is the correct translation of "Cachorro"?',
+        options: ['Cat', 'Dog', 'Bird', 'Fish'],
+        correctIndex: 1,
+      },
+      {
+        id: 'dq-w1-2',
+        question: 'Which sentence is correct?',
+        options: ['She go to school.', 'She goes to school.', 'She going to school.', 'She gone to school.'],
+        correctIndex: 1,
+      },
+      {
+        id: 'dq-w1-3',
+        question: 'What does "beautiful" mean?',
+        options: ['Feio', 'Grande', 'Bonito', 'Pequeno'],
+        correctIndex: 2,
+      },
+      {
+        id: 'dq-w1-4',
+        question: 'Choose the correct plural of "child":',
+        options: ['Childs', 'Childes', 'Children', 'Childrens'],
+        correctIndex: 2,
+      },
+    ],
+  },
+  {
+    id: 'duma-quiz-week-2',
+    title: 'Duma Quiz',
+    weekLabel: 'Semana 2',
+    description: 'Verbos, tempos verbais e expressões do dia a dia.',
+    questions: [
+      {
+        id: 'dq-w2-1',
+        question: 'What is the past tense of "go"?',
+        options: ['Goed', 'Goes', 'Went', 'Gone'],
+        correctIndex: 2,
+      },
+      {
+        id: 'dq-w2-2',
+        question: 'How do you say "Eu estou estudando" in English?',
+        options: ['I study.', 'I am studying.', 'I was studying.', 'I studied.'],
+        correctIndex: 1,
+      },
+      {
+        id: 'dq-w2-3',
+        question: 'Which word means "rápido"?',
+        options: ['Slow', 'Loud', 'Fast', 'Soft'],
+        correctIndex: 2,
+      },
+      {
+        id: 'dq-w2-4',
+        question: 'Complete: "She ___ a doctor."',
+        options: ['are', 'am', 'is', 'be'],
+        correctIndex: 2,
       },
     ],
   },

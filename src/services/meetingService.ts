@@ -9,6 +9,7 @@ interface AgendaMeetingDto {
   skillId: number;
   stageId: number;
   lessonId: string;
+  lessonTitle?: string;
   planId: number;
   meetingUrl?: string;
   scheduledStart: string;
@@ -71,6 +72,7 @@ export async function fetchMeetingsAgenda(): Promise<AgendaEvent[]> {
         meetingUrl: meeting.meetingUrl,
         recordingUrl: meeting.recordingUrl,
         status: meeting.status,
+        lessonTitle: meeting.lessonTitle,
       };
     });
 }

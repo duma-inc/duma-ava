@@ -27,9 +27,9 @@ export default function DumaNewsPage() {
         setCategories(catalog.categories);
         setArticles(catalog.articles);
         if (catalog.categories.length > 0) {
-          setSelectedCategory((current) => (
+          setSelectedCategory((current) =>
             catalog.categories.includes(current) ? current : catalog.categories[0]
-          ));
+          );
         }
       } catch {
         if (!isMounted) return;
@@ -41,7 +41,7 @@ export default function DumaNewsPage() {
       }
     }
 
-    loadCatalog();
+    void loadCatalog();
     return () => {
       isMounted = false;
     };
@@ -52,21 +52,47 @@ export default function DumaNewsPage() {
     [articles, selectedCategory]
   );
 
+  const featuredArticle = useMemo(
+    () => articles.find((article) => article.highlightedArticle) || null,
+    [articles]
+  );
+
   return (
-    <div className="flex flex-col gap-6 pb-10 max-w-2xl mx-auto w-full">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-10">
       <div className="flex items-center gap-3">
         <Link
           href="/conteudo"
-          className="p-2 bg-surface rounded-lg border border-primary-darker hover:border-primary text-primary transition-all cursor-pointer"
+          className="rounded-lg border border-primary-darker bg-surface p-2 text-primary transition-all hover:border-primary"
         >
-          <ChevronLeftIcon className="w-5 h-5" />
+          <ChevronLeftIcon className="h-5 w-5" />
         </Link>
-        <h1 className="text-[22px] font-extrabold text-text-primary">
-          DumaNews
-        </h1>
+        <h1 className="text-[22px] font-extrabold text-text-primary">DumaNews</h1>
       </div>
 
-      {/* Category Tabs */}
+      <p className="text-sm leading-6 text-[#D2B98B]">
+        Leia as manchetes do dia, abra a matéria completa e toque nas palavras do título ou do conteúdo para criar flashcards.
+      </p>
+
+      {featuredArticle && featuredArticle.category === selectedCategory && (
+        <Link
+          href={`/conteudo/dumanews/${featuredArticle.id}`}
+          className="rounded-2xl border border-primary bg-[#22190a] p-5 shadow-md transition-all hover:scale-[1.01] hover:border-primary cursor-pointer"
+        >
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="rounded-full bg-primary/15 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+              {featuredArticle.category}
+            </span>
+            <span className="text-primary-dark">›</span>
+          </div>
+          <h2 className="text-2xl font-extrabold leading-8 text-text-primary">{featuredArticle.headline}</h2>
+          <p className="mt-3 text-sm leading-6 text-[#D2B98B]">{featuredArticle.summary}</p>
+          <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+            <span className="font-bold text-primary-dark">{featuredArticle.source}</span>
+            <span className="text-[#8F8A7E]">{featuredArticle.publishedAt}</span>
+          </div>
+        </Link>
+      )}
+
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((category) => {
           const active = selectedCategory === category;
@@ -74,13 +100,11 @@ export default function DumaNewsPage() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all whitespace-nowrap cursor-pointer
-                ${
-                  active
-                    ? "bg-primary border-primary text-black"
-                    : "bg-surface border-primary-darker text-primary-dark hover:border-primary hover:text-primary"
-                }
-              `}
+              className={`whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-bold transition-all cursor-pointer ${
+                active
+                  ? "border-primary bg-primary text-black"
+                  : "border-primary-darker bg-surface text-primary-dark hover:border-primary hover:text-primary"
+              }`}
             >
               {category}
             </button>
@@ -88,45 +112,59 @@ export default function DumaNewsPage() {
         })}
       </div>
 
-      {/* Articles list */}
+      {!isLoading && !hasError && filteredArticles.length > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-primary">{selectedCategory}</h2>
+          <p className="text-xs text-primary-dark">
+            {filteredArticles.length} manchete{filteredArticles.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         {isLoading ? (
-          <p className="text-primary-dark text-sm">Carregando notícias...</p>
+          <p className="text-sm text-primary-dark">Carregando notícias...</p>
         ) : hasError ? (
-          <p className="text-primary-dark text-sm">Não foi possível carregar as notícias agora.</p>
+          <p className="text-sm text-primary-dark">Não foi possível carregar as notícias agora.</p>
         ) : filteredArticles.length === 0 ? (
-          <p className="text-primary-dark text-sm">Nenhum artigo nesta categoria.</p>
+          <p className="text-sm text-primary-dark">Nenhum artigo nesta categoria.</p>
         ) : (
-          filteredArticles.map((art) => (
+          filteredArticles.map((article) => (
             <Link
-              key={art.id}
-              href={`/conteudo/dumanews/${art.id}`}
-              className={`rounded-2xl p-4 sm:p-5 flex flex-col gap-3 shadow-md hover:border-primary hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer group ${
-                art.highlightedArticle
-                  ? "bg-[#22190a] border border-primary"
-                  : "bg-surface border border-primary-darker"
+              key={article.id}
+              href={`/conteudo/dumanews/${article.id}`}
+              className={`group flex flex-col gap-3 rounded-2xl p-4 shadow-md transition-all hover:scale-[1.01] hover:border-primary cursor-pointer sm:p-5 ${
+                article.highlightedArticle
+                  ? "border border-primary bg-[#22190a]"
+                  : "border border-primary-darker bg-surface"
               }`}
             >
-              <div className="flex items-center justify-between gap-2 text-[10px] text-primary-dark font-bold uppercase tracking-wider">
-                <span>{art.source}</span>
-                <span>{art.publishedAt}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                  {article.category}
+                </span>
+                <span className="text-primary-dark">›</span>
               </div>
-              {art.highlightedArticle && (
-                <span className="text-[10px] text-primary font-black uppercase tracking-[0.24em]">
+
+              {article.highlightedArticle && featuredArticle?.id !== article.id && (
+                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">
                   Destaque
                 </span>
               )}
+
               <div>
-                <h3 className="text-base font-extrabold text-text-primary group-hover:text-primary transition-colors leading-snug">
-                  {art.headline}
+                <h3 className="text-base font-extrabold leading-snug text-text-primary transition-colors group-hover:text-primary">
+                  {article.headline}
                 </h3>
-                <p className="text-xs text-primary-dark line-clamp-2 mt-1.5 leading-relaxed">
-                  {art.summary}
+                <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-primary-dark">
+                  {article.summary}
                 </p>
               </div>
-              <span className="text-[11px] text-primary font-bold uppercase tracking-wide mt-1">
-                Ler artigo completo →
-              </span>
+
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="font-bold text-primary-dark">{article.source}</span>
+                <span className="text-[#8F8A7E]">{article.publishedAt}</span>
+              </div>
             </Link>
           ))
         )}

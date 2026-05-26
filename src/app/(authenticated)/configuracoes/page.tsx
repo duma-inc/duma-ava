@@ -69,10 +69,6 @@ function PerfilTab() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
   async function fetchProfile() {
     try {
       setLoading(true);
@@ -85,13 +81,23 @@ function PerfilTab() {
       setFirstName(data.firstName || "");
       setLastName(data.lastName || "");
       setEmail(data.email || "");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message || "Erro de conexão ao carregar o perfil.");
+      setError(err instanceof Error ? err.message : "Erro de conexão ao carregar o perfil.");
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchProfile();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -109,9 +115,9 @@ function PerfilTab() {
       }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message || "Erro de conexão ao salvar alterações.");
+      setError(err instanceof Error ? err.message : "Erro de conexão ao salvar alterações.");
     } finally {
       setSaving(false);
     }
@@ -384,7 +390,7 @@ const planos = [
     nome: "Fast Trimestral",
     preco: "R$ 229,90",
     periodo: "/mês",
-    cor: "#FDA91E",
+    cor: "#EDAA12",
     destaque: false,
     recursos: [
       { texto: "Exercícios ilimitados", ativo: true },

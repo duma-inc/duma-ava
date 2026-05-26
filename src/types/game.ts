@@ -11,3 +11,18 @@ export interface SentenceBuilderPack {
   description: string;
   sentences: SentenceBuilderItem[];
 }
+
+export interface DumaQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
+
+export interface DumaQuizPack {
+  id: string;
+  title: string;
+  weekLabel: string;
+  description: string;
+  questions: DumaQuizQuestion[];
+}

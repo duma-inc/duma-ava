@@ -67,7 +67,7 @@ export default function DashboardPage() {
     return {
       ...enrollment,
       title: skill?.name || `Skill #${enrollment.skillId}`,
-      color: "#FDA91E",
+      color: "#EDAA12",
     };
   });
 
@@ -83,12 +83,12 @@ export default function DashboardPage() {
           Olá, Estudante!
         </h1>
         <div className="flex items-center gap-4">
-          <Link
+          {/* <Link
             href="/configuracoes"
             className="text-primary hover:text-primary-dark transition-colors"
           >
             <Cog6ToothIcon className="w-6 h-6" />
-          </Link>
+          </Link> */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="text-primary-dark hover:text-danger transition-colors cursor-pointer"
@@ -171,7 +171,7 @@ export default function DashboardPage() {
               <BorderedCard
                 key={curso.id}
                 title={curso.name}
-                color="#FDA91E"
+                color="#EDAA12"
                 icon={
                   <GlobeAltIcon
                     className="w-7 h-7 text-primary"

@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   description:
     "Plataforma de aprendizagem inteligente com IA, gamificação e acompanhamento personalizado.",
   keywords: ["educação", "IA", "aprendizagem", "edtech", "duma"],
+  icons: {
+    icon: "/assets/logoDuma2.png",
+    apple: "/assets/logoDuma2.png",
+  },
 };
 
 export default function RootLayout({

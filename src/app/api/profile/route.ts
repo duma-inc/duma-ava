@@ -3,13 +3,24 @@ import { auth } from "@/lib/auth";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.accessToken) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const accountUrl = `${process.env.KEYCLOAK_ISSUER}/account`;
+  const fallbackProfile = {
+    firstName: session.user?.name?.split(" ")[0] ?? "",
+    lastName: session.user?.name?.split(" ").slice(1).join(" ") ?? "",
+    email: session.user?.email ?? "",
+  };
+
+  if (!session.accessToken) {
+    return NextResponse.json(fallbackProfile);
+  }
+
+  const userInfoUrl = `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/userinfo`;
+
   try {
-    const res = await fetch(accountUrl, {
+    const res = await fetch(userInfoUrl, {
       headers: {
         Authorization: `Bearer ${session.accessToken}`,
         "Content-Type": "application/json",
@@ -17,17 +28,25 @@ export async function GET() {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Keycloak error: ${res.status}` }, { status: res.status });
+      return NextResponse.json(fallbackProfile);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      given_name?: string;
+      family_name?: string;
+      name?: string;
+      email?: string;
+    };
+
     return NextResponse.json({
-      firstName: data.firstName ?? "",
-      lastName: data.lastName ?? "",
-      email: data.email ?? "",
+      firstName: data.given_name ?? fallbackProfile.firstName,
+      lastName:
+        data.family_name ??
+        (data.name ? data.name.split(" ").slice(1).join(" ") : fallbackProfile.lastName),
+      email: data.email ?? fallbackProfile.email,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json(fallbackProfile);
   }
 }
 
@@ -59,7 +78,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unexpected error" },
+      { status: 500 }
+    );
   }
 }
