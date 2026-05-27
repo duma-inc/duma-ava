@@ -122,14 +122,16 @@ export default function ApostilaPage() {
                 )}
               </div>
 
-              <a
-                href={activeLesson.pdfUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary bg-primary/15 text-primary transition-all hover:brightness-110"
-              >
-                <ArrowDownTrayIcon className="h-5 w-5" />
-              </a>
+              {activeLesson.pdfUrl && (
+                <a
+                  href={activeLesson.pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary bg-primary/15 text-primary transition-all hover:brightness-110"
+                >
+                  <ArrowDownTrayIcon className="h-5 w-5" />
+                </a>
+              )}
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">

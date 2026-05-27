@@ -5,19 +5,19 @@ import { LanguageIcon } from '@heroicons/react/24/outline';
 interface Props {
   exercise: Exercise;
   answered: boolean;
+  isCorrect: boolean | null;
   selectedAnswer: string | null;
   onAnswer: (answer: string) => void;
 }
 
-export default function TranslateExercise({ exercise, answered, selectedAnswer, onAnswer }: Props) {
+export default function TranslateExercise({ exercise, answered, isCorrect: isCorrectProp, selectedAnswer, onAnswer }: Props) {
   const [input, setInput] = useState('');
 
   useEffect(() => {
     setInput('');
   }, [exercise.id]);
 
-  // Is correct can be derived from the selected answer if it's correct according to options
-  const isCorrect = answered && exercise.options.some((o) => o.isCorrect && o.text.toLowerCase() === selectedAnswer?.toLowerCase());
+  const isCorrect = answered && isCorrectProp === true;
 
   return (
     <div className="flex flex-col gap-5">

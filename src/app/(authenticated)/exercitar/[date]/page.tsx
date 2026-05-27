@@ -81,7 +81,7 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
         <div className="flex-1 flex flex-col">
           <span className="text-text-primary text-base font-extrabold">{dayLabel}</span>
           {retryRound && (
-            <span className="text-danger text-xs font-bold">🔄 Refazendo as erradas</span>
+            <span className="text-danger text-xs font-bold">| Refazendo as erradas</span>
           )}
         </div>
         <div className="flex flex-row items-center gap-3">

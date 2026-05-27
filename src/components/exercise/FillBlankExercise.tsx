@@ -4,6 +4,7 @@ import { Exercise } from '../../types/exercise';
 interface Props {
   exercise: Exercise;
   answered: boolean;
+  isCorrect: boolean | null;
   selectedAnswer: string | null;
   onAnswer: (answer: string) => void;
 }
@@ -13,15 +14,14 @@ function splitDescription(description: string): [string, string] {
   return [parts[0] ?? '', parts[1] ?? ''];
 }
 
-export default function FillBlankExercise({ exercise, answered, selectedAnswer, onAnswer }: Props) {
+export default function FillBlankExercise({ exercise, answered, isCorrect: isCorrectProp, selectedAnswer, onAnswer }: Props) {
   const [input, setInput] = useState('');
 
   useEffect(() => {
     setInput('');
   }, [exercise.id]);
 
-  // isCorrect from options since we don't receive it directly as prop anymore (recomputed)
-  const isCorrect = answered && exercise.options.some((o) => o.isCorrect && o.text.toLowerCase() === selectedAnswer?.toLowerCase());
+  const isCorrect = answered && isCorrectProp === true;
   const [before, after] = splitDescription(exercise.description);
 
   return (

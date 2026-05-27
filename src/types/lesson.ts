@@ -11,6 +11,6 @@ export interface LessonBook {
   lessonId: string;
   title: string;
   subtitle?: string;
-  pdfUrl: string;
+  pdfUrl?: string;
   chapters: LessonChapter[];
 }

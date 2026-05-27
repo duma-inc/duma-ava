@@ -23,9 +23,9 @@ export default function ExerciseRenderer({ exercise, answered, isCorrect, select
     case 'MULTIPLE_CHOICE':
       return <MultipleChoiceExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'FILL_IN_THE_BLANK':
-      return <FillBlankExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <FillBlankExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'TRANSLATION':
-      return <TranslateExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <TranslateExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'TRUE_FALSE':
       return <TrueFalseExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'SHORT_ANSWER':

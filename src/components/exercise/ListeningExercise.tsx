@@ -47,6 +47,8 @@ export default function ListeningExercise({ exercise, answered, selectedAnswer, 
       } else {
         const utterance = new SpeechSynthesisUtterance(exercise.description);
         utterance.lang = exercise.language || 'en-US';
+        utterance.pitch = 0.95;
+        utterance.rate = 0.9;
         utterance.onstart = () => setIsPlaying(true);
         utterance.onend = () => setIsPlaying(false);
         utterance.onerror = () => setIsPlaying(false);

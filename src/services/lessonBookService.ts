@@ -33,7 +33,7 @@ function mapChapter(chapter: LessonChapterApiResponse): LessonChapter | null {
 }
 
 function mapLessonBook(item: LessonBookApiResponse): LessonBook | null {
-  if (!item.id || !item.lessonId || !item.title || !item.pdfUrl) {
+  if (!item.id || !item.lessonId || !item.title) {
     return null;
   }
 
