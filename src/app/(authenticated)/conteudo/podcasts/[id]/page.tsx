@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeftIcon, MicrophoneIcon } from "@heroicons/react/24/outline";
-import InteractiveText from "@/components/reading/InteractiveText";
+import InteractiveMarkdown from "@/components/reading/InteractiveMarkdown";
 import { fetchPodcastCategoryGroups } from "@/services/podcastService";
 import { PodcastEpisode } from "@/types/podcast";
 
@@ -47,20 +47,34 @@ export default function PodcastPlayerPage({ params }: PageProps) {
 
   const episode = useMemo(() => episodes.find((item) => item.id === id) || null, [episodes, id]);
 
-  const parsedTranscriptLines = useMemo(() => {
+  const parsedTranscriptBlocks = useMemo(() => {
     if (!episode?.transcript) return [];
+
     return episode.transcript
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((line, index) => {
-        const colonIdx = line.indexOf(":");
-        if (colonIdx > 0 && colonIdx < 15) {
-          const speaker = line.substring(0, colonIdx).trim();
-          const text = line.substring(colonIdx + 1).trim();
-          return { speaker, text, key: `${index}` };
+      .split(/\n\s*\n/)
+      .map((block) => block.trim())
+      .filter((block) => block.length > 0)
+      .flatMap((block, blockIndex) => {
+        const speakerMatch = block.match(/^([^:\n]{1,15}):\s+([\s\S]+)$/);
+
+        if (speakerMatch) {
+          return [
+            {
+              type: "speaker" as const,
+              speaker: speakerMatch[1].trim(),
+              text: speakerMatch[2].trim(),
+              key: `speaker-${blockIndex}`,
+            },
+          ];
         }
-        return { speaker: null, text: line, key: `${index}` };
+
+        return [
+          {
+            type: "markdown" as const,
+            text: block,
+            key: `markdown-${blockIndex}`,
+          },
+        ];
       });
   }, [episode]);
 
@@ -126,25 +140,25 @@ export default function PodcastPlayerPage({ params }: PageProps) {
         </div>
 
         <div className="max-h-[400px] space-y-4 overflow-y-auto pr-2">
-          {parsedTranscriptLines.map((line) => (
-            <div key={line.key} className="flex flex-col gap-1">
-              {line.speaker ? (
+          {parsedTranscriptBlocks.map((block) => (
+            <div key={block.key} className="flex flex-col gap-1">
+              {block.type === "speaker" ? (
                 <div className="mt-2 flex items-center gap-1.5">
                   <span
                     className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase ${
-                      line.speaker.toLowerCase() === "emma"
+                      block.speaker.toLowerCase() === "emma"
                         ? "bg-[#FDA91E]/20 text-[#FDA91E]"
-                        : line.speaker.toLowerCase() === "lucas"
+                        : block.speaker.toLowerCase() === "lucas"
                           ? "bg-[#D88A00]/20 text-[#D88A00]"
                           : "bg-primary-darker/20 text-primary-dark"
                     }`}
                   >
-                    {line.speaker}
+                    {block.speaker}
                   </span>
                 </div>
               ) : null}
               <div className="pl-1 text-sm leading-relaxed text-text-primary">
-                <InteractiveText text={line.text} />
+                <InteractiveMarkdown markdown={block.text} />
               </div>
             </div>
           ))}

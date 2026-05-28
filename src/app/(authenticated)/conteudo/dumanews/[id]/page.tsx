@@ -9,6 +9,7 @@ import {
   MinusIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import InteractiveMarkdown from "@/components/reading/InteractiveMarkdown";
 import InteractiveText from "@/components/reading/InteractiveText";
 import { fetchNewsArticleById } from "@/services/newsService";
 import { NewsArticle } from "@/types/news";
@@ -164,8 +165,8 @@ export default function NewsArticlePage({ params }: PageProps) {
         )}
 
         <div className="mt-2 border-t border-primary-darker/10 pt-2 text-sm leading-relaxed text-text-primary/90">
-          <InteractiveText
-            text={article.content}
+          <InteractiveMarkdown
+            markdown={article.content}
             fontSize={fontSize}
             lineHeight={Math.round(fontSize * 1.6)}
           />
