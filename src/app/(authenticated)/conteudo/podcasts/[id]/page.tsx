@@ -11,6 +11,19 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+type TranscriptBlock =
+  | {
+      type: "speaker";
+      speaker: string;
+      text: string;
+      key: string;
+    }
+  | {
+      type: "markdown";
+      text: string;
+      key: string;
+    };
+
 export default function PodcastPlayerPage({ params }: PageProps) {
   const { id } = use(params);
   const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
@@ -47,14 +60,14 @@ export default function PodcastPlayerPage({ params }: PageProps) {
 
   const episode = useMemo(() => episodes.find((item) => item.id === id) || null, [episodes, id]);
 
-  const parsedTranscriptBlocks = useMemo(() => {
+  const parsedTranscriptBlocks = useMemo<TranscriptBlock[]>(() => {
     if (!episode?.transcript) return [];
 
     return episode.transcript
       .split(/\n\s*\n/)
       .map((block) => block.trim())
       .filter((block) => block.length > 0)
-      .flatMap((block, blockIndex) => {
+      .flatMap<TranscriptBlock>((block, blockIndex) => {
         const speakerMatch = block.match(/^([^:\n]{1,15}):\s+([\s\S]+)$/);
 
         if (speakerMatch) {
