@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
-import { XMarkIcon, BookmarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  BookmarkIcon,
+  ArrowPathIcon,
+  SpeakerWaveIcon,
+  PauseIcon,
+} from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import api from '@/lib/api';
 import { useFlashcardContext } from '@/store/FlashcardContext';
@@ -22,12 +28,30 @@ interface FlashcardResponse {
   repetitions: number;
 }
 
+interface TranslationLookupResponse {
+  translation?: string;
+  translations?: string[];
+}
+
+function formatTranslations(response: TranslationLookupResponse) {
+  const translations = (response.translations || [])
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (translations.length > 0) {
+    return translations.join(', ');
+  }
+
+  return response.translation?.trim() || null;
+}
+
 export default function WordModal({ word, contextSentence, onClose }: Props) {
   const { wordsSet, addWord } = useFlashcardContext();
   const isSaved = wordsSet.has(word);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [translation, setTranslation] = useState<string | null>(null);
   const [flashcard, setFlashcard] = useState<FlashcardResponse | null>(null);
 
@@ -40,8 +64,8 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
           setFlashcard(res.data);
           setTranslation(res.data.back);
         } else {
-          const res = await api.get<{ translation: string }>(`/flashcards/translate?text=${word}`);
-          setTranslation(res.data.translation);
+          const res = await api.get<TranslationLookupResponse>(`/flashcards/translate?text=${word}`);
+          setTranslation(formatTranslations(res.data));
         }
       } catch (err) {
         console.error('Error fetching word data:', err);
@@ -51,6 +75,18 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
     }
     fetchData();
   }, [word, isSaved]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Safe catch
+        }
+      }
+    };
+  }, [word]);
 
   async function handleSave() {
     if (!translation) return;
@@ -67,6 +103,33 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
       console.error('Error saving flashcard:', err);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleSpeakWord() {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.warn('Speech synthesis is not supported in this browser.');
+      return;
+    }
+
+    try {
+      if (isSpeaking || window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      utterance.pitch = 0.95;
+      utterance.rate = 0.85;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('Error toggling speech synthesis:', err);
+      setIsSpeaking(false);
     }
   }
 
@@ -99,9 +162,24 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
               <DialogPanel className="relative transform overflow-hidden bg-surface rounded-t-2xl sm:rounded-2xl text-left shadow-xl transition-all w-full sm:max-w-md border-t sm:border border-primary-darker p-6 flex flex-col gap-4">
                 <div className="flex flex-row items-start justify-between">
                   <div className="flex flex-col">
-                    <DialogTitle as="h3" className="text-2xl font-black text-primary capitalize">
-                      {word}
-                    </DialogTitle>
+                    <div className="flex items-center gap-2">
+                      <DialogTitle as="h3" className="text-2xl font-black text-primary capitalize">
+                        {word}
+                      </DialogTitle>
+                      <button
+                        type="button"
+                        onClick={handleSpeakWord}
+                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-primary-darker bg-[#1C1C1C] text-primary transition-all hover:border-primary hover:text-primary-dark"
+                        title={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
+                        aria-label={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
+                      >
+                        {isSpeaking ? (
+                          <PauseIcon className="h-4.5 w-4.5" />
+                        ) : (
+                          <SpeakerWaveIcon className="h-4.5 w-4.5" />
+                        )}
+                      </button>
+                    </div>
                     {loading ? (
                       <div className="h-5 w-24 bg-[#2A2A2A] animate-pulse rounded mt-1" />
                     ) : (
@@ -117,7 +195,7 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
 
                 <div className="bg-[#1A1A1A] border border-primary-darker/50 rounded-xl p-3.5 flex flex-col gap-1.5 mt-2">
                   <span className="text-xs font-bold text-primary-dark uppercase tracking-wider">Contexto</span>
-                  <span className="text-sm text-[#F4E3C1] italic">"{contextSentence}"</span>
+                  <span className="text-sm text-[#F4E3C1] italic">&ldquo;{contextSentence}&rdquo;</span>
                 </div>
 
                 {isSaved && flashcard ? (

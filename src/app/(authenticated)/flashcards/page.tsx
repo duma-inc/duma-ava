@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { ArrowLeftIcon, LightBulbIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  LightBulbIcon,
+  CheckCircleIcon,
+  SpeakerWaveIcon,
+  PauseIcon,
+} from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
 interface FlashcardResponse {
@@ -20,6 +26,7 @@ export default function FlashcardsReviewPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [showBack, setShowBack] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     async function fetchDueCards() {
@@ -35,12 +42,58 @@ export default function FlashcardsReviewPage() {
     fetchDueCards();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Safe catch
+        }
+      }
+    };
+  }, [currentIdx]);
+
   const current = cards[currentIdx];
+
+  function handleSpeakWord() {
+    if (!current || typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    try {
+      if (isSpeaking || window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(current.front);
+      utterance.lang = 'en-US';
+      utterance.pitch = 0.95;
+      utterance.rate = 0.9;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('Error toggling flashcard TTS:', err);
+      setIsSpeaking(false);
+    }
+  }
 
   async function handleReview(rating: number) {
     if (!current || submitting) return;
     setSubmitting(true);
     try {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Safe catch
+        }
+      }
+      setIsSpeaking(false);
       await api.post(`/flashcards/${current.id}/review`, { rating });
       setShowBack(false);
       setCurrentIdx((i) => i + 1);
@@ -98,9 +151,24 @@ export default function FlashcardsReviewPage() {
       <div className="bg-[#1C1C1C] border border-primary-darker rounded-2xl w-full p-8 sm:p-12 shadow-lg flex flex-col items-center text-center gap-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
         
-        <span className="text-3xl sm:text-4xl font-black text-text-primary capitalize tracking-tight mt-4">
-          {current.front}
-        </span>
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-3xl sm:text-4xl font-black text-text-primary capitalize tracking-tight">
+            {current.front}
+          </span>
+          <button
+            type="button"
+            onClick={handleSpeakWord}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-primary-darker bg-background text-primary transition-all hover:border-primary hover:text-primary-dark"
+            title={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
+            aria-label={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
+          >
+            {isSpeaking ? (
+              <PauseIcon className="h-5 w-5" />
+            ) : (
+              <SpeakerWaveIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
 
         {showBack && (
           <div className="w-full flex flex-col items-center gap-6 mt-4">
@@ -114,7 +182,7 @@ export default function FlashcardsReviewPage() {
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-4 w-full flex flex-row gap-3 text-left items-start mt-2">
                 <LightBulbIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <span className="text-xs text-[#D88A00] italic leading-relaxed">
-                  "{current.context}"
+                  &ldquo;{current.context}&rdquo;
                 </span>
               </div>
             )}
