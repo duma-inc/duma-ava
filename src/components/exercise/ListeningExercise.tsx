@@ -85,6 +85,12 @@ export default function ListeningExercise({ exercise, answered, selectedAnswer, 
           Ouça e responda:
         </span>
 
+        {exercise.translation && (
+          <p className="text-sm text-text-primary font-medium mt-1 mb-1">
+            {exercise.translation}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={togglePlayback}
