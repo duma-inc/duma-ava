@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Exercise } from '../../types/exercise';
+import { shuffleItems } from '../../lib/shuffle';
 
 interface Props {
   exercise: Exercise;
@@ -10,7 +11,10 @@ interface Props {
 }
 
 export default function MultipleChoiceExercise({ exercise, answered, selectedAnswer, onAnswer }: Props) {
-  const options = exercise.options ?? [];
+  const options = useMemo(
+    () => shuffleItems(exercise.options ?? []),
+    [exercise.options],
+  );
 
   function getOptionClass(opt: { text: string; isCorrect: boolean }) {
     if (!answered) return 'bg-surface border-primary-darker hover:bg-primary-darker/20';

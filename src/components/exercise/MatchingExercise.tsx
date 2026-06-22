@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Exercise, ExerciseOption } from '../../types/exercise';
 import { TrashIcon, CheckCircleIcon, LinkIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { shuffleItems } from '../../lib/shuffle';
 
 function resolveMatchKey(o: ExerciseOption): string | undefined {
-  return o.matchKey ?? (o as any).match_key;
+  return o.matchKey ?? (o as ExerciseOption & { match_key?: string }).match_key;
 }
 
 interface Props {
@@ -13,37 +14,52 @@ interface Props {
   onAnswer: (answer: string) => void;
 }
 
-export default function MatchingExercise({ exercise, answered, selectedAnswer, onAnswer }: Props) {
-  const terms = exercise.options;
-  const definitionTexts = exercise.options.map((o) => resolveMatchKey(o) ?? o.text);
+export default function MatchingExercise({ exercise, answered, onAnswer }: Props) {
+  const terms = useMemo(
+    () => shuffleItems(exercise.options ?? []),
+    [exercise.options],
+  );
+  const definitionTexts = useMemo(
+    () => (exercise.options ?? []).map((o) => resolveMatchKey(o) ?? o.text),
+    [exercise.options],
+  );
 
-  const [shuffledDefs] = useState<string[]>(() => [...definitionTexts].sort(() => Math.random() - 0.5));
-  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
-  const [pairs, setPairs] = useState<Record<string, number>>({});
+  const shuffledDefs = useMemo(() => shuffleItems(definitionTexts), [definitionTexts]);
+  const [selectedTermState, setSelectedTermState] = useState<{ exerciseId: string; value: string | null }>({
+    exerciseId: exercise.id,
+    value: null,
+  });
+  const [pairsState, setPairsState] = useState<{ exerciseId: string; value: Record<string, number> }>({
+    exerciseId: exercise.id,
+    value: {},
+  });
+  const selectedTerm = selectedTermState.exerciseId === exercise.id ? selectedTermState.value : null;
+  const pairs = pairsState.exerciseId === exercise.id ? pairsState.value : {};
 
   const allPaired = Object.keys(pairs).length === terms.length;
 
   function selectTerm(termText: string) {
     if (answered) return;
     if (selectedTerm === termText) {
-      setSelectedTerm(null);
+      setSelectedTermState({ exerciseId: exercise.id, value: null });
       return;
     }
-    setSelectedTerm(termText);
+    setSelectedTermState({ exerciseId: exercise.id, value: termText });
   }
 
   function selectDef(defIdx: number) {
     if (answered || !selectedTerm) return;
-    setPairs((prev) => {
+    setPairsState((prevState) => {
+      const prev = prevState.exerciseId === exercise.id ? prevState.value : {};
       const next = { ...prev };
       for (const [k, v] of Object.entries(next)) {
         if (v === defIdx) delete next[k];
       }
       delete next[selectedTerm];
       next[selectedTerm] = defIdx;
-      return next;
+      return { exerciseId: exercise.id, value: next };
     });
-    setSelectedTerm(null);
+    setSelectedTermState({ exerciseId: exercise.id, value: null });
   }
 
   function confirm() {
@@ -155,8 +171,8 @@ export default function MatchingExercise({ exercise, answered, selectedAnswer, o
         <div className="flex flex-row gap-2.5 items-center mt-2">
           <button
             onClick={() => {
-              setPairs({});
-              setSelectedTerm(null);
+              setPairsState({ exerciseId: exercise.id, value: {} });
+              setSelectedTermState({ exerciseId: exercise.id, value: null });
             }}
             className="w-[52px] h-[52px] rounded-xl border-[1.5px] border-primary-darker bg-surface flex items-center justify-center hover:bg-primary-darker/20 transition-colors"
           >

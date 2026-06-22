@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SpeakerWaveIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 import { Exercise } from '../../types/exercise';
+import { shuffleItems } from '../../lib/shuffle';
 
 interface Props {
   exercise: Exercise;
@@ -11,7 +12,10 @@ interface Props {
 }
 
 export default function ListeningExercise({ exercise, answered, selectedAnswer, onAnswer }: Props) {
-  const options = exercise.options ?? [];
+  const options = useMemo(
+    () => shuffleItems(exercise.options ?? []),
+    [exercise.options],
+  );
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [prevExerciseId, setPrevExerciseId] = useState(exercise.id);
