@@ -45,9 +45,13 @@ function formatTranslations(response: TranslationLookupResponse) {
   return response.translation?.trim() || null;
 }
 
+function normalizeWord(word: string) {
+  return word.trim().toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 export default function WordModal({ word, contextSentence, onClose }: Props) {
   const { wordsSet, addWord } = useFlashcardContext();
-  const isSaved = wordsSet.has(word);
+  const isSaved = wordsSet.has(normalizeWord(word));
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

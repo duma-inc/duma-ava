@@ -15,17 +15,36 @@ import {
   SparklesIcon,
   CheckCircleIcon,
   XMarkIcon,
+  SquaresPlusIcon,
 } from "@heroicons/react/24/outline";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useExerciseContext } from "@/store/ExerciseContext";
 import api from "@/lib/api";
 
+interface SkillSummary {
+  id: number;
+  name: string;
+}
+
+interface PlanFeature {
+  ativo: boolean;
+  texto: string;
+}
+
+interface PlanSummary {
+  id: number;
+  nome: string;
+  preco: string;
+  destaque?: boolean;
+  recursos?: PlanFeature[];
+}
+
 export default function DashboardPage() {
   const { enrollments, refreshPlan } = useExerciseContext();
-  const [skills, setSkills] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
+  const [skills, setSkills] = useState<SkillSummary[]>([]);
+  const [plans, setPlans] = useState<PlanSummary[]>([]);
+  const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingEnroll, setLoadingEnroll] = useState(false);
 
@@ -89,6 +108,14 @@ export default function DashboardPage() {
           >
             <Cog6ToothIcon className="w-6 h-6" />
           </Link> */}
+          <Link
+            href="/flashcards?tab=adicionar"
+            className="text-primary-dark hover:text-primary transition-colors cursor-pointer"
+            title="Adicionar flashcard"
+            aria-label="Adicionar flashcard"
+          >
+            <SquaresPlusIcon className="w-6 h-6" />
+          </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="text-primary-dark hover:text-danger transition-colors cursor-pointer"
@@ -233,7 +260,7 @@ export default function DashboardPage() {
                     <p className="text-lg font-extrabold text-primary mt-1">{plano.preco}</p>
 
                     <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
-                      {plano.recursos?.map((rec: any, idx: number) => (
+                      {plano.recursos?.map((rec, idx) => (
                         <li key={idx} className="flex items-center gap-1.5">
                           <CheckCircleIcon className={`w-4 h-4 shrink-0 ${rec.ativo ? "text-primary" : "text-primary-dark"}`} />
                           <span className={rec.ativo ? "text-text-primary" : "line-through opacity-50"}>{rec.texto}</span>
@@ -242,7 +269,7 @@ export default function DashboardPage() {
                     </ul>
 
                     <Button
-                      onClick={() => handleEnroll(selectedSkill?.id, plano.id)}
+                      onClick={() => selectedSkill && handleEnroll(selectedSkill.id, plano.id)}
                       className="w-full mt-4 py-1.5 text-xs font-bold"
                     >
                       Iniciar Matrícula

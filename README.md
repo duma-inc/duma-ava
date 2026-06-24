@@ -147,3 +147,27 @@ const response = await api.get("/cursos", {
   headers: { Authorization: `Bearer ${session?.accessToken}` },
 });
 ```
+
+---
+
+## 🧠 Flashcards
+
+A rota protegida `/flashcards` organiza o estudo de vocabulário em três abas:
+
+| Aba | Função |
+|-----|--------|
+| `Revisar` | Mantém a revisão espaçada dos cards pendentes via `GET /flashcards/due` e `POST /flashcards/{id}/review`. |
+| `Adicionar` | Permite criar manualmente um card com frente, verso e contexto via `POST /flashcards`. |
+| `Explorar` | Exibe o banco de palavras em tabela com busca, filtro por status, edição e exclusão. |
+
+O dashboard possui um atalho de ícone ao lado do botão de sair que navega diretamente para `/flashcards?tab=adicionar`.
+
+### Endpoints usados
+
+| Método | Endpoint | Uso |
+|--------|----------|-----|
+| `GET` | `/flashcards?status=all|due|learned&q=texto` | Listar banco de palavras com filtros. |
+| `POST` | `/flashcards` | Criar flashcard manual ou a partir de leitura interativa. |
+| `PUT` | `/flashcards/{id}` | Editar frente, verso e contexto preservando revisão espaçada. |
+| `DELETE` | `/flashcards/{id}` | Excluir flashcard do usuário autenticado. |
+| `GET` | `/flashcards/words` | Sincronizar palavras já salvas para marcação em textos interativos. |
