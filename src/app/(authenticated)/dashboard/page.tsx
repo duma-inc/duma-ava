@@ -102,12 +102,6 @@ export default function DashboardPage() {
           Olá, Estudante!
         </h1>
         <div className="flex items-center gap-4">
-          {/* <Link
-            href="/configuracoes"
-            className="text-primary hover:text-primary-dark transition-colors"
-          >
-            <Cog6ToothIcon className="w-6 h-6" />
-          </Link> */}
           <Link
             href="/flashcards?tab=adicionar"
             className="text-primary-dark hover:text-primary transition-colors cursor-pointer"
@@ -115,6 +109,12 @@ export default function DashboardPage() {
             aria-label="Adicionar flashcard"
           >
             <SquaresPlusIcon className="w-6 h-6" />
+          </Link>
+          <Link
+            href="/configuracoes"
+            className="text-primary hover:text-primary-dark transition-colors"
+          >
+            <Cog6ToothIcon className="w-6 h-6" />
           </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

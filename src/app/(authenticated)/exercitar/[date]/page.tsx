@@ -7,7 +7,7 @@ import { useExercises } from '@/hooks/useExercises';
 import { useExerciseSound } from '@/hooks/useExerciseSound';
 import ExerciseRenderer from '@/components/exercise/ExerciseRenderer';
 import ReportIssueModal from '@/components/exercise/ReportIssueModal';
-import { TYPE_LABELS } from '@/types/exercise';
+import { TYPE_LABELS, TYPES_WITHOUT_HEADER } from '@/types/exercise';
 
 export default function ExercicioPage({ params }: { params: Promise<{ date: string }> | { date: string } }) {
   const router = useRouter();
@@ -71,6 +71,9 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
     );
   }
 
+  // Tipos cujo corpo já exibe o enunciado — repetir no topo duplicaria ou entregaria a resposta
+  const hideHeader = TYPES_WITHOUT_HEADER.includes(current.type);
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] -mt-6 -mx-4 sm:-mx-8 bg-background-dark">
       {/* Header */}
@@ -114,30 +117,34 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
           </span>
         </div>
 
-        {/* Enunciado */}
-        <h2 className="text-[20px] font-extrabold text-text-primary leading-[30px] mb-2">
-          {current.description}
-        </h2>
+        {!hideHeader && (
+          <>
+            {/* Enunciado */}
+            <h2 className="text-[20px] font-extrabold text-text-primary leading-[30px] mb-2">
+              {current.description}
+            </h2>
 
-        {/* Botão tradução */}
-        {current.translation && (
-          <button
-            onClick={() => setShowTranslation(!showTranslation)}
-            className="flex flex-row items-center gap-1.5 mb-2 self-start text-primary-darker hover:text-primary transition-colors font-semibold text-[13px] cursor-pointer"
-          >
-            <GlobeAltIcon className="w-4 h-4" />
-            {showTranslation ? 'Ocultar tradução' : 'Ver tradução'}
-          </button>
+            {/* Botão tradução */}
+            {current.translation && (
+              <button
+                onClick={() => setShowTranslation(!showTranslation)}
+                className="flex flex-row items-center gap-1.5 mb-2 self-start text-primary-darker hover:text-primary transition-colors font-semibold text-[13px] cursor-pointer"
+              >
+                <GlobeAltIcon className="w-4 h-4" />
+                {showTranslation ? 'Ocultar tradução' : 'Ver tradução'}
+              </button>
+            )}
+
+            {/* Tradução */}
+            {showTranslation && current.translation && (
+              <div className="bg-[#1C1C1C] rounded-xl border border-primary-darker/40 p-3 mb-4">
+                <span className="text-primary-dark text-sm italic">{current.translation}</span>
+              </div>
+            )}
+
+            <div className="h-4" />
+          </>
         )}
-
-        {/* Tradução */}
-        {showTranslation && current.translation && (
-          <div className="bg-[#1C1C1C] rounded-xl border border-primary-darker/40 p-3 mb-4">
-            <span className="text-primary-dark text-sm italic">{current.translation}</span>
-          </div>
-        )}
-
-        <div className="h-4" />
 
         {/* Render do exercício */}
         <ExerciseRenderer

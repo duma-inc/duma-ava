@@ -84,6 +84,9 @@ export const NON_RETRYABLE_TYPES: ExerciseType[] = ['ESSAY', 'TRUE_FALSE', 'SHOR
 /** Types that are never auto-corrected (always isCorrect: true, score: 0) */
 export const NON_CORRECTABLE_TYPES: ExerciseType[] = ['ESSAY', 'SHORT_ANSWER', 'SPEAKING'];
 
+/** Types whose body already renders the prompt — the shared header (description + translation toggle) is redundant or a spoiler */
+export const TYPES_WITHOUT_HEADER: ExerciseType[] = ['LISTENING', 'TRANSLATION'];
+
 /** Map backend type to Portuguese label */
 export const TYPE_LABELS: Record<ExerciseType, string> = {
   MULTIPLE_CHOICE: 'Múltipla escolha',

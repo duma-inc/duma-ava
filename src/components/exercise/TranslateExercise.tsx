@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Exercise } from '../../types/exercise';
 import { LanguageIcon } from '@heroicons/react/24/outline';
 
+const TARGET_LANGUAGE_HINTS: { pattern: RegExp; label: string }[] = [
+  { pattern: /(?:to|para o|para)\s+(?:portugu[eê]s|portuguese)/i, label: 'Traduza para o português' },
+  { pattern: /(?:to|para o|para)\s+(?:ingl[eê]s|english)/i, label: 'Traduza para o inglês' },
+];
+
+/** Deduz o idioma alvo a partir do enunciado; mantém o inglês como padrão quando não há indicação */
+function getTranslateHint(description: string): string {
+  return TARGET_LANGUAGE_HINTS.find((h) => h.pattern.test(description))?.label ?? 'Traduza para o inglês';
+}
+
 interface Props {
   exercise: Exercise;
   answered: boolean;
@@ -27,7 +37,7 @@ export default function TranslateExercise({ exercise, answered, isCorrect: isCor
         <p className="text-[22px] font-black text-text-primary text-center">
           {exercise.description}
         </p>
-        <p className="text-[13px] text-primary-darker">Traduza para o inglês</p>
+        <p className="text-[13px] text-primary-darker">{getTranslateHint(exercise.description)}</p>
       </div>
 
       {!answered && (
