@@ -6,8 +6,16 @@ metadata:
   labels:
     app: duma-ava
 spec:
-  replicas: 2
+  # 1 replica: o no tem 2 CPUs e fica proximo do limite de requests.
+  replicas: 1
   revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Sobe o pod novo antes de derrubar o antigo (deploy sem indisponibilidade).
+      # So cabe porque a reducao para 1 replica liberou CPU no no.
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: duma-ava
