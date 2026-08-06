@@ -85,7 +85,7 @@ function PerfilTab() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/profile");
+      const res = await fetch("/user-profile");
       if (!res.ok) {
         throw new Error(`Erro ao buscar dados do perfil: ${res.status}`);
       }

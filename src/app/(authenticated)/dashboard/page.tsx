@@ -115,7 +115,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch("/api/profile");
+        const res = await fetch("/user-profile");
         if (!res.ok) return;
         const data = await res.json();
         setProfileFirstName((data.firstName as string | undefined)?.trim().split(" ")[0] ?? "");

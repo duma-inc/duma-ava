@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
+/*
+ * Esta rota mora FORA de /api de proposito. No nginx de producao, `location /api/` aponta para o
+ * duma-backend (removendo o prefixo), entao um handler em /api/profile nunca chega ao Next.js --
+ * a requisicao vira GET /profile no Spring e volta 404. A unica excecao aberta la e /api/auth/,
+ * para o next-auth. Qualquer route handler proprio da AVA precisa ficar sob `location /`.
+ */
 export async function GET() {
   const session = await auth();
   if (!session) {
