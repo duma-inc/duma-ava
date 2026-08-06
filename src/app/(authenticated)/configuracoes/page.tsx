@@ -11,7 +11,17 @@ import {
   BellIcon,
   CheckCircleIcon,
   XCircleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
+import {
+  fetchStudyPreferences,
+  updateStudyPreferences,
+} from "@/services/studyPreferenceService";
+import type {
+  ExerciseDifficulty,
+  WeekDay,
+} from "@/types/studyPreference";
+import { useExerciseContext } from "@/store/ExerciseContext";
 
 type Aba = "perfil" | "ritmo" | "financeiro";
 
@@ -59,15 +69,17 @@ export default function ConfiguracoesPage() {
   );
 }
 
-/* ── Perfil Tab (Connected to Keycloak via proxy route) ── */
+/* ── Perfil Tab (leitura do Keycloak via proxy route; edição feita pelo suporte) ── */
+
+const READONLY_INPUT_CLASSES =
+  "w-full bg-background border border-primary-darker rounded-lg px-3 py-2.5 text-sm text-text-primary opacity-60 cursor-not-allowed";
+
 function PerfilTab() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   async function fetchProfile() {
     try {
@@ -99,30 +111,6 @@ function PerfilTab() {
     };
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
-      const res = await fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email }),
-      });
-      if (!res.ok) {
-        throw new Error(`Erro ao salvar perfil: ${res.status}`);
-      }
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: unknown) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Erro de conexão ao salvar alterações.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="bg-surface rounded-xl p-5 border border-primary-darker flex flex-col items-center justify-center min-h-[200px]">
@@ -138,16 +126,10 @@ function PerfilTab() {
         Informações pessoais
       </h3>
 
-      <form onSubmit={handleSave} className="space-y-4">
+      <div className="space-y-4">
         {error && (
           <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs font-bold">
             {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-bold">
-            Alterações gravadas com sucesso no Keycloak!
           </div>
         )}
 
@@ -158,10 +140,10 @@ function PerfilTab() {
             </label>
             <input
               type="text"
-              required
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full bg-background border border-primary-darker rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors"
+              disabled
+              readOnly
+              className={READONLY_INPUT_CLASSES}
             />
           </div>
           <div>
@@ -170,10 +152,10 @@ function PerfilTab() {
             </label>
             <input
               type="text"
-              required
               value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full bg-background border border-primary-darker rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors"
+              disabled
+              readOnly
+              className={READONLY_INPUT_CLASSES}
             />
           </div>
         </div>
@@ -184,21 +166,23 @@ function PerfilTab() {
           </label>
           <input
             type="email"
-            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-background border border-primary-darker rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-primary transition-colors"
+            disabled
+            readOnly
+            className={READONLY_INPUT_CLASSES}
           />
+          <p className="text-[11px] text-primary-dark/80 mt-1.5 leading-relaxed">
+            O email é o seu identificador de login. Trocá-lo exige nova verificação e um novo acesso à conta.
+          </p>
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold py-2.5 rounded-lg hover:brightness-110 transition-all cursor-pointer text-xs"
-        >
-          {saving ? "Salvando..." : "Salvar alterações"}
-        </button>
-      </form>
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary-darker/50">
+          <LockClosedIcon className="w-4 h-4 text-primary-dark shrink-0 mt-0.5" />
+          <p className="text-[11px] text-primary-dark leading-relaxed">
+            Estes dados são somente leitura por aqui. Para corrigir nome, sobrenome ou email, fale com o suporte da Duma.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -207,21 +191,118 @@ function PerfilTab() {
 type DiaSemana = "Seg" | "Ter" | "Qua" | "Qui" | "Sex" | "Sáb" | "Dom";
 const DIAS: DiaSemana[] = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
-type Meta = 5 | 10 | 15 | 20 | 30;
-const METAS: Meta[] = [5, 10, 15, 20, 30];
+// Cada meta corresponde a um pace da matrícula (CASUAL, MODERATE, REGULAR, AGGRESSIVE),
+// que é quem define a quantidade diária no plano semanal.
+type Meta = 10 | 15 | 20 | 30;
+const METAS: Meta[] = [10, 15, 20, 30];
 
 type Dificuldade = "Fácil" | "Médio" | "Difícil";
 const DIFICULDADES: Dificuldade[] = ["Fácil", "Médio", "Difícil"];
 
+const DIA_TO_WEEKDAY: Record<DiaSemana, WeekDay> = {
+  Seg: "MONDAY",
+  Ter: "TUESDAY",
+  Qua: "WEDNESDAY",
+  Qui: "THURSDAY",
+  Sex: "FRIDAY",
+  Sáb: "SATURDAY",
+  Dom: "SUNDAY",
+};
+
+const WEEKDAY_TO_DIA = Object.fromEntries(
+  Object.entries(DIA_TO_WEEKDAY).map(([dia, weekday]) => [weekday, dia as DiaSemana])
+) as Record<WeekDay, DiaSemana>;
+
+const DIFICULDADE_TO_API: Record<Dificuldade, ExerciseDifficulty> = {
+  Fácil: "EASY",
+  Médio: "MODERATE",
+  Difícil: "HARD",
+};
+
+const API_TO_DIFICULDADE: Record<ExerciseDifficulty, Dificuldade> = {
+  EASY: "Fácil",
+  MODERATE: "Médio",
+  HARD: "Difícil",
+};
+
 function RitmoTab() {
+  const { refreshPlan } = useExerciseContext();
   const [diasAtivos, setDiasAtivos] = useState<DiaSemana[]>(["Seg", "Ter", "Qua", "Qui", "Sex"]);
   const [meta, setMeta] = useState<Meta>(10);
-  const [dificuldade, setDificuldade] = useState<Dificuldade>("Médio");
-  const [lembrete, setLembrete] = useState(true);
+  // null = sem preferência de dificuldade; o backend então não filtra por ela.
+  const [dificuldade, setDificuldade] = useState<Dificuldade | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        setError(null);
+        const { data } = await fetchStudyPreferences();
+        setDiasAtivos(
+          (data.studyDays || [])
+            .map((weekday) => WEEKDAY_TO_DIA[weekday])
+            .filter(Boolean)
+        );
+        if (METAS.includes(data.dailyExerciseGoal as Meta)) {
+          setMeta(data.dailyExerciseGoal as Meta);
+        }
+        setDificuldade(data.difficulty ? API_TO_DIFICULDADE[data.difficulty] : null);
+      } catch (err) {
+        console.error("[Ritmo] Error loading study preferences:", err);
+        // Sem saber o que está gravado, salvar sobrescreveria as preferências reais
+        // com os valores padrão da tela.
+        setLoadFailed(true);
+        setError("Não foi possível carregar suas preferências. Recarregue a página antes de salvar.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPreferences();
+  }, []);
 
   function toggleDia(dia: DiaSemana) {
     setDiasAtivos((prev) =>
       prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia]
+    );
+  }
+
+  async function handleSave() {
+    if (diasAtivos.length === 0) {
+      setError("Selecione pelo menos um dia de estudo.");
+      return;
+    }
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(false);
+      await updateStudyPreferences({
+        studyDays: diasAtivos.map((dia) => DIA_TO_WEEKDAY[dia]),
+        dailyExerciseGoal: meta,
+        difficulty: dificuldade ? DIFICULDADE_TO_API[dificuldade] : null,
+      });
+      // O backend apagou o plano desta semana: recarrega o contexto para que /exercitar
+      // não continue mostrando os exercícios antigos que ficaram em memória.
+      await refreshPlan();
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error("[Ritmo] Error saving study preferences:", err);
+      setError("Erro ao salvar suas preferências. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-surface rounded-xl p-5 border border-primary-darker flex flex-col items-center justify-center min-h-[200px]">
+        <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-2" />
+        <span className="text-xs text-primary-dark font-medium">Carregando preferências...</span>
+      </div>
     );
   }
 
@@ -308,7 +389,7 @@ function RitmoTab() {
             return (
               <button
                 key={d}
-                onClick={() => setDificuldade(d)}
+                onClick={() => setDificuldade(ativo ? null : d)}
                 className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer
                   ${
                     ativo
@@ -323,65 +404,79 @@ function RitmoTab() {
             );
           })}
         </div>
+        <span className="block text-[11px] text-primary-dark mt-2.5">
+          {dificuldade
+            ? "Toque de novo para voltar a receber exercícios de todos os níveis."
+            : "Sem preferência — você recebe exercícios de todos os níveis."}
+        </span>
       </div>
 
-      {/* Lembrete */}
-      <div className="bg-surface rounded-2xl border border-primary-darker p-4 shadow-sm">
+      {/* Lembrete — desabilitado até termos envio de email configurado */}
+      <div className="bg-surface rounded-2xl border border-primary-darker p-4 shadow-sm opacity-60">
         <div className="flex items-center gap-2 mb-3.5">
           <BellIcon className="w-5 h-5 text-primary" />
           <h3 className="text-sm font-bold text-text-primary">Lembrete diário</h3>
+          <span className="ml-auto rounded-md border border-primary/40 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+            Em breve
+          </span>
         </div>
         <button
-          onClick={() => setLembrete(!lembrete)}
-          className="w-full flex items-center justify-between bg-[#1C1C1C] border border-[#7A4A12]/40 rounded-xl p-3.5 text-xs font-bold text-text-primary transition-all cursor-pointer hover:border-primary"
+          disabled
+          className="w-full flex items-center justify-between bg-[#1C1C1C] border border-[#7A4A12]/40 rounded-xl p-3.5 text-xs font-bold text-text-primary cursor-not-allowed"
         >
           <span>Notificação às 19h</span>
-          <div
-            className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 flex items-center
-              ${lembrete ? "bg-primary justify-end" : "bg-primary-darker/35 justify-start"}
-            `}
-          >
+          <div className="w-10 h-5.5 rounded-full p-0.5 flex items-center bg-primary-darker/35 justify-start">
             <div className="w-4.5 h-4.5 rounded-full bg-white shadow-sm" />
           </div>
         </button>
       </div>
+
+      {/* Salvar */}
+      {error && (
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs font-bold">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-bold">
+          Ritmo atualizado! Seu plano desta semana foi refeito com as novas preferências.
+        </div>
+      )}
+
+      <button
+        onClick={handleSave}
+        disabled={saving || loadFailed}
+        className="w-full bg-primary disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold py-2.5 rounded-lg hover:brightness-110 transition-all cursor-pointer text-xs"
+      >
+        {saving ? "Salvando..." : "Salvar alterações"}
+      </button>
+
+      <p className="text-[11px] text-primary-dark/80 text-center leading-relaxed">
+        Alterar o ritmo regenera o plano de exercícios da semana atual.
+      </p>
     </div>
   );
 }
 
 /* ── Financeiro Tab (Pricing options mirroring mobile tiers) ── */
-type PlanoId = "gratuito" | "basic" | "fast" | "super";
+type PlanoId = "lite" | "fast" | "super" | "globalmarket";
 
 const planos = [
   {
-    id: "gratuito" as PlanoId,
-    nome: "Gratuito",
-    preco: "R$ 0",
-    periodo: "para sempre",
-    cor: "#A08060",
-    destaque: false,
-    recursos: [
-      { texto: "5 exercícios por dia", ativo: true },
-      { texto: "Acesso ao conteúdo básico", ativo: true },
-      { texto: "Progresso semanal", ativo: true },
-      { texto: "Aulas semanais ao vivo", ativo: false },
-      { texto: "Conversação diária", ativo: false },
-      { texto: "Certificação com desconto", ativo: false },
-    ],
-  },
-  {
-    id: "basic" as PlanoId,
-    nome: "Basic",
-    preco: "R$ 29,90",
+    id: "lite" as PlanoId,
+    nome: "Lite Mensal",
+    preco: "R$ 179,90",
     periodo: "/mês",
     cor: "#A08060",
     destaque: false,
+    emBreve: false,
     recursos: [
       { texto: "Exercícios ilimitados", ativo: true },
       { texto: "Todo o conteúdo", ativo: true },
-      { texto: "Progresso semanal", ativo: true },
+      { texto: "Progresso mensal", ativo: true },
       { texto: "Aulas semanais ao vivo", ativo: false },
-      { texto: "Conversação diária", ativo: false },
+      { texto: "Encontro de conversação", ativo: true },
       { texto: "Certificação com desconto", ativo: false },
     ],
   },
@@ -392,35 +487,56 @@ const planos = [
     periodo: "/mês",
     cor: "#EDAA12",
     destaque: false,
+    emBreve: false,
     recursos: [
       { texto: "Exercícios ilimitados", ativo: true },
       { texto: "Todo o conteúdo", ativo: true },
       { texto: "Progresso detalhado", ativo: true },
       { texto: "Aulas semanais ao vivo", ativo: true },
-      { texto: "Conversação diária", ativo: false },
+      { texto: "Encontro de conversação", ativo: false },
       { texto: "Certificação com desconto", ativo: false },
     ],
   },
   {
     id: "super" as PlanoId,
     nome: "Premium Trimestral",
-    preco: "R$ 369,90",
-    periodo: "/mês  •  R$ 1779,90/sem",
+    preco: "R$ 279,90",
+    periodo: "/mês",
     cor: "#D88A00",
     destaque: true,
+    emBreve: false,
     recursos: [
       { texto: "Exercícios ilimitados", ativo: true },
       { texto: "Todo o conteúdo", ativo: true },
       { texto: "Progresso detalhado", ativo: true },
       { texto: "Aulas semanais ao vivo", ativo: true },
-      { texto: "Conversação diária", ativo: true },
+      { texto: "Encontro de conversação", ativo: true },
       { texto: "Certificação com desconto", ativo: true },
+    ],
+  },
+  {
+    id: "globalmarket" as PlanoId,
+    nome: "Global Market",
+    preco: "R$ 349,90",
+    periodo: "/mês",
+    cor: "#FDA91E",
+    destaque: false,
+    emBreve: false,
+    recursos: [
+      { texto: "Exercícios ilimitados", ativo: true },
+      { texto: "Todo o conteúdo", ativo: true },
+      { texto: "Progresso detalhado", ativo: true },
+      { texto: "Aulas semanais ao vivo", ativo: true },
+      { texto: "Encontro de conversação", ativo: true },
+      { texto: "Simulação de entrevistas", ativo: true },
+      { texto: "Painel de vagas", ativo: true },
+      { texto: "Acompanhamento profissional", ativo: true },
     ],
   },
 ];
 
 function FinanceiroTab() {
-  const [selecionado, setSelecionado] = useState<PlanoId>("gratuito");
+  const [selecionado, setSelecionado] = useState<PlanoId>("super");
 
   return (
     <div className="flex flex-col gap-6">
@@ -438,19 +554,27 @@ function FinanceiroTab() {
       {/* Plan list */}
       <div className="flex flex-col gap-4">
         {planos.map((plano) => {
-          const isSelected = selecionado === plano.id;
+          const isSelected = !plano.emBreve && selecionado === plano.id;
           return (
             <div
               key={plano.id}
-              onClick={() => setSelecionado(plano.id)}
-              className={`bg-[#1C1C1C] rounded-2xl border transition-all p-5 shadow-md flex flex-col gap-4 cursor-pointer relative overflow-hidden
-                ${isSelected ? "border-primary" : "border-primary-darker hover:border-primary-dark"}
+              onClick={plano.emBreve ? undefined : () => setSelecionado(plano.id)}
+              className={`bg-[#1C1C1C] rounded-2xl border transition-all p-5 shadow-md flex flex-col gap-4 relative overflow-hidden
+                ${plano.emBreve
+                  ? "border-primary-darker opacity-50 cursor-not-allowed"
+                  : `cursor-pointer ${isSelected ? "border-primary" : "border-primary-darker hover:border-primary-dark"}`}
               `}
             >
-              {plano.destaque && (
-                <div className="absolute top-0 right-0 bg-primary text-black font-extrabold text-[8px] uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                  Destaque
+              {plano.emBreve ? (
+                <div className="absolute top-0 right-0 bg-primary-darker text-text-primary font-extrabold text-[8px] uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                  Em breve
                 </div>
+              ) : (
+                plano.destaque && (
+                  <div className="absolute top-0 right-0 bg-primary text-black font-extrabold text-[8px] uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                    Destaque
+                  </div>
+                )
               )}
 
               {/* Title & selection dot */}
@@ -458,13 +582,15 @@ function FinanceiroTab() {
                 <h4 className="text-sm font-bold text-text-primary" style={{ color: plano.cor }}>
                   {plano.nome}
                 </h4>
-                <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors
-                    ${isSelected ? "bg-primary border-primary" : "border-primary-darker bg-transparent"}
-                  `}
-                >
-                  {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-black" />}
-                </div>
+                {!plano.emBreve && (
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors
+                      ${isSelected ? "bg-primary border-primary" : "border-primary-darker bg-transparent"}
+                    `}
+                  >
+                    {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-black" />}
+                  </div>
+                )}
               </div>
 
               {/* Price */}
@@ -494,7 +620,7 @@ function FinanceiroTab() {
       </div>
 
       {/* Upgrade CTA */}
-      {selecionado !== "gratuito" && (
+      {planos.some((plano) => plano.id === selecionado && !plano.emBreve) && (
         <a
           href="https://duma.app/assinar"
           target="_blank"

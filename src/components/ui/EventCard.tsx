@@ -21,6 +21,8 @@ export interface AgendaEvent {
   recordingUrl?: string;
   status?: string;
   lessonTitle?: string;
+  /** Data e hora de início cruas, como vieram do backend (sem timezone). */
+  scheduledStart?: string;
 }
 
 const typeConfig: Record<

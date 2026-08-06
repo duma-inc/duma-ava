@@ -69,6 +69,7 @@ export async function fetchMeetingsAgenda(): Promise<AgendaEvent[]> {
         time: formatTime(meeting.scheduledStart),
         description: meeting.description,
         date: meeting.scheduledStart.split('T')[0],
+        scheduledStart: meeting.scheduledStart,
         meetingUrl: meeting.meetingUrl,
         recordingUrl: meeting.recordingUrl,
         status: meeting.status,

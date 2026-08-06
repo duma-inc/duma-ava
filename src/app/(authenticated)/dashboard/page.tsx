@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import ProgressBar from "@/components/ui/ProgressBar";
 import BorderedCard from "@/components/ui/BorderedCard";
+import CardButton from "@/components/ui/CardButton";
 import {
   Cog6ToothIcon,
   ArrowRightStartOnRectangleIcon,
@@ -16,15 +17,42 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   SquaresPlusIcon,
+  Square3Stack3DIcon,
+  NewspaperIcon,
+  VideoCameraIcon,
 } from "@heroicons/react/24/outline";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useExerciseContext } from "@/store/ExerciseContext";
+import { fetchDueFlashcards } from "@/services/flashcardService";
+import { fetchMeetingsAgenda } from "@/services/meetingService";
+import { AgendaEvent } from "@/components/ui/EventCard";
 import api from "@/lib/api";
 
 interface SkillSummary {
   id: number;
   name: string;
+}
+
+/**
+ * Por quanto tempo o encontro continua sendo oferecido depois do horário de início.
+ * O backend não guarda duração nem horário de término, então essa é a janela de tolerância.
+ */
+const MEETING_VISIBLE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/** Data de hoje no fuso local, no mesmo formato do campo `date` da agenda (YYYY-MM-DD). */
+function todayKey() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/** Um encontro deixa de ser oferecido quando passa da janela de tolerância. */
+function isMeetingOver(event: AgendaEvent, now: number) {
+  if (!event.scheduledStart) return false;
+  const start = new Date(event.scheduledStart).getTime();
+  return Number.isFinite(start) && now > start + MEETING_VISIBLE_WINDOW_MS;
 }
 
 interface PlanFeature {
@@ -42,11 +70,17 @@ interface PlanSummary {
 
 export default function DashboardPage() {
   const { enrollments, refreshPlan } = useExerciseContext();
+  const { data: session } = useSession();
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingEnroll, setLoadingEnroll] = useState(false);
+  // null enquanto carrega, para não piscar o atalho de flashcards
+  const [dueCount, setDueCount] = useState<number | null>(null);
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [stageName, setStageName] = useState("");
+  const [todayMeeting, setTodayMeeting] = useState<AgendaEvent | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -63,6 +97,83 @@ export default function DashboardPage() {
     }
     loadData();
   }, []);
+
+  useEffect(() => {
+    async function loadDueFlashcards() {
+      try {
+        const { data } = await fetchDueFlashcards();
+        setDueCount(data?.length ?? 0);
+      } catch (err) {
+        console.error("[Dashboard] Error fetching due flashcards:", err);
+        setDueCount(0);
+      }
+    }
+    loadDueFlashcards();
+  }, []);
+
+  // O given_name do Keycloak é a fonte de verdade; a sessão serve de valor imediato
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/profile");
+        if (!res.ok) return;
+        const data = await res.json();
+        setProfileFirstName((data.firstName as string | undefined)?.trim().split(" ")[0] ?? "");
+      } catch (err) {
+        console.error("[Dashboard] Error fetching profile:", err);
+      }
+    }
+    loadProfile();
+  }, []);
+
+  // Encontro de hoje: a agenda já vem ordenada por horário
+  useEffect(() => {
+    async function loadTodayMeeting() {
+      try {
+        const events = await fetchMeetingsAgenda();
+        const today = todayKey();
+        const now = Date.now();
+        setTodayMeeting(
+          events.find(
+            (event) =>
+              event.date === today &&
+              event.status !== "CANCELED" &&
+              event.status !== "COMPLETED" &&
+              !isMeetingOver(event, now)
+          ) ?? null
+        );
+      } catch (err) {
+        console.error("[Dashboard] Error fetching today's meeting:", err);
+      }
+    }
+    loadTodayMeeting();
+  }, []);
+
+  // Etapa atual da matrícula ativa, exibida como tag ao lado do nome
+  useEffect(() => {
+    const activeEnrollment =
+      enrollments.find((e) => e.status === "ACTIVE") ?? enrollments[0];
+    const stageId = activeEnrollment?.currentStageId;
+    if (!stageId) return;
+
+    let cancelled = false;
+    async function loadStage() {
+      try {
+        const { data } = await api.get(`/stages/${stageId}`);
+        if (!cancelled) setStageName(data?.name ?? "");
+      } catch (err) {
+        console.error("[Dashboard] Error fetching current stage:", err);
+      }
+    }
+    loadStage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enrollments]);
+
+  const sessionFirstName = session?.user?.name?.trim().split(" ")[0] ?? "";
+  const firstName = profileFirstName || sessionFirstName || "Estudante";
 
   const handleEnroll = async (skillId: number, planId: number) => {
     try {
@@ -86,7 +197,10 @@ export default function DashboardPage() {
     return {
       ...enrollment,
       title: skill?.name || `Skill #${enrollment.skillId}`,
-      color: "#EDAA12",
+      progress: Math.max(
+        0,
+        Math.min(100, Math.round(enrollment.progressPercentage ?? 0))
+      ),
     };
   });
 
@@ -97,11 +211,21 @@ export default function DashboardPage() {
   return (
     <div className="relative">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-text-primary">
-          Olá, Estudante!
-        </h1>
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-2xl font-extrabold text-text-primary truncate">
+            Olá, {firstName}!
+          </h1>
+          {stageName && (
+            <span
+              className="shrink-0 rounded-md border border-primary/40 bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary"
+              title="Sua etapa atual"
+            >
+              {stageName}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
           <Link
             href="/flashcards?tab=adicionar"
             className="text-primary-dark hover:text-primary transition-colors cursor-pointer"
@@ -149,6 +273,67 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {/* Encontro do dia — só aparece quando há aula cadastrada para hoje */}
+      {todayMeeting && (
+        <Card title="Encontro de Hoje" divider className="mb-6">
+          <div className="flex items-start gap-2.5 mb-4">
+            <VideoCameraIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-text-primary truncate">
+                {todayMeeting.title}
+              </p>
+              <p className="text-xs text-primary-dark">
+                {todayMeeting.badgeLabel} · às {todayMeeting.time}
+              </p>
+            </div>
+          </div>
+
+          {todayMeeting.meetingUrl ? (
+            <a
+              href={todayMeeting.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:brightness-110 text-text-on-primary font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              <VideoCameraIcon className="w-5 h-5" />
+              Entrar no Encontro
+            </a>
+          ) : (
+            <p className="text-xs text-primary-dark text-center">
+              O link do encontro ainda não foi disponibilizado.
+            </p>
+          )}
+        </Card>
+      )}
+
+      {/* Atalhos: revisão de flashcards e DumaNews */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <CardButton
+          title={
+            dueCount && dueCount > 0
+              ? `Revisar ${dueCount} flashcard${dueCount > 1 ? "s" : ""}`
+              : "Flashcards"
+          }
+          subtitle={
+            dueCount === null
+              ? undefined
+              : dueCount > 0
+                ? "Pendentes de revisão"
+                : "Nenhum card para revisão"
+          }
+          color="#7A4A12"
+          icon={<Square3Stack3DIcon className="w-9 h-9" />}
+          href="/flashcards?tab=revisar"
+        />
+        <CardButton
+          title="DumaNews"
+          subtitle="Notícias globais"
+          color="#D88A00"
+          icon={<NewspaperIcon className="w-9 h-9" />}
+          href="/conteudo/dumanews"
+        />
+      </div>
+
       {/* Cursos Matriculados */}
       {enrolledSkillsList.length > 0 && (
         <>
@@ -172,9 +357,9 @@ export default function DashboardPage() {
                     <p className="text-[15px] font-semibold text-text-primary mb-1.5">
                       {curso.title}
                     </p>
-                    <ProgressBar value={curso.progressPercentage || 0} color={curso.color} />
+                    <ProgressBar value={curso.progress} />
                     <p className="text-xs text-primary-dark mt-1">
-                      {curso.progressPercentage || 0}% concluído
+                      {curso.progress}% concluído
                     </p>
                   </div>
                   <ChevronRightIcon

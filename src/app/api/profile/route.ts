@@ -50,38 +50,11 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.accessToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const body = await req.json();
-    const accountUrl = `${process.env.KEYCLOAK_ISSUER}/account`;
-    const res = await fetch(accountUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json({ error: `Keycloak error: ${res.status} - ${text}` }, { status: res.status });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error" },
-      { status: 500 }
-    );
-  }
-}
+/*
+ * Não há POST aqui de propósito. A escrita usava a Account REST API do Keycloak
+ * (`${KEYCLOAK_ISSUER}/account`), que exige um token com audience `account` e a role de client
+ * `account:manage-account` — o realm da Duma não entrega nenhum dos dois, então a chamada sempre
+ * devolvia 401. Além disso, a Account API não sincroniza a tabela `users` do Postgres.
+ * O caminho correto, quando a edição voltar, é um `PUT /users/me` no duma-backend usando o bean
+ * Keycloak admin que já existe em `config/KeycloakConfig.java`.
+ */

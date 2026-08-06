@@ -60,6 +60,9 @@ export interface EnrollmentResponse {
   progressPercentage: number;
   source: string;
   pace: string;
+  currentLessonId?: string | null;
+  planId?: number | null;
+  enrolledAt?: string;
 }
 
 export interface AttemptPayload {

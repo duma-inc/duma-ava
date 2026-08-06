@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, CalendarDaysIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ChevronRightIcon, CalendarDaysIcon, XMarkIcon, VideoCameraIcon } from "@heroicons/react/24/outline";
 import ViewToggle, { ViewMode } from "@/components/ui/ViewToggle";
 import EventCard, { AgendaEvent } from "@/components/ui/EventCard";
 import { fetchMeetingsAgenda } from "@/services/meetingService";
@@ -392,8 +392,9 @@ export default function AgendaPage() {
                   href={selectedEvent.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center py-2.5 bg-primary hover:brightness-110 text-black font-bold text-sm rounded-xl transition-all shadow-md"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:brightness-110 text-black font-bold text-sm rounded-xl transition-all shadow-md"
                 >
+                  <VideoCameraIcon className="w-5 h-5" />
                   Participar do Encontro
                 </a>
               )}
