@@ -43,3 +43,7 @@ next-env.d.ts
 # Manifests de Secret do k8s com valores reais (use secret.example como modelo)
 k8s/secret.yml
 k8s/secret.yaml
+
+# Backups gerados por duma-infra/update_host_ip.sh (contêm segredos)
+.env.bak-*
+.env.local.bak-*

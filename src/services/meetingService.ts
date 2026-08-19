@@ -7,10 +7,10 @@ interface AgendaMeetingDto {
   description?: string;
   teacherId: string;
   skillId: number;
-  stageId: number;
-  lessonId: string;
+  stageId: number | null;
+  lessonId: string | null;
   lessonTitle?: string;
-  planId: number;
+  planId: number | null;
   meetingUrl?: string;
   scheduledStart: string;
   recordingUrl?: string;
