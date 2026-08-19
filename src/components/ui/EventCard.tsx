@@ -21,6 +21,10 @@ export interface AgendaEvent {
   recordingUrl?: string;
   status?: string;
   lessonTitle?: string;
+  /** Se o encontro tem palavra-chave de presenca configurada. */
+  hasAttendanceKeyword?: boolean;
+  /** Se o aluno logado ja registrou presenca neste encontro. */
+  alreadyCheckedIn?: boolean;
   /** Data e hora de início cruas, como vieram do backend (sem timezone). */
   scheduledStart?: string;
 }

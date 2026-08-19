@@ -27,6 +27,7 @@ import { useExerciseContext } from "@/store/ExerciseContext";
 import { fetchDueFlashcards } from "@/services/flashcardService";
 import { fetchMeetingsAgenda } from "@/services/meetingService";
 import { AgendaEvent } from "@/components/ui/EventCard";
+import MeetingDetailsModal from "@/components/ui/MeetingDetailsModal";
 import api from "@/lib/api";
 
 interface SkillSummary {
@@ -81,6 +82,7 @@ export default function DashboardPage() {
   const [profileFirstName, setProfileFirstName] = useState("");
   const [stageName, setStageName] = useState("");
   const [todayMeeting, setTodayMeeting] = useState<AgendaEvent | null>(null);
+  const [meetingDetails, setMeetingDetails] = useState<AgendaEvent | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -288,21 +290,13 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {todayMeeting.meetingUrl ? (
-            <a
-              href={todayMeeting.meetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:brightness-110 text-text-on-primary font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
-            >
-              <VideoCameraIcon className="w-5 h-5" />
-              Entrar no Encontro
-            </a>
-          ) : (
-            <p className="text-xs text-primary-dark text-center">
-              O link do encontro ainda não foi disponibilizado.
-            </p>
-          )}
+          <button
+            onClick={() => setMeetingDetails(todayMeeting)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:brightness-110 text-text-on-primary font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+          >
+            <VideoCameraIcon className="w-5 h-5" />
+            Detalhes do Encontro
+          </button>
         </Card>
       )}
 
@@ -476,6 +470,20 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <MeetingDetailsModal
+        key={meetingDetails?.id ?? "none"}
+        event={meetingDetails}
+        onClose={() => setMeetingDetails(null)}
+        onCheckedIn={() => {
+          setTodayMeeting((current) =>
+            current ? { ...current, alreadyCheckedIn: true } : current
+          );
+          setMeetingDetails((current) =>
+            current ? { ...current, alreadyCheckedIn: true } : current
+          );
+        }}
+      />
     </div>
   );
 }

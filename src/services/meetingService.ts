@@ -16,6 +16,8 @@ interface AgendaMeetingDto {
   recordingUrl?: string;
   status: string;
   meetingType: string;
+  hasAttendanceKeyword?: boolean;
+  alreadyCheckedIn?: boolean;
 }
 
 interface MeetingsAgendaResponse {
@@ -74,6 +76,13 @@ export async function fetchMeetingsAgenda(): Promise<AgendaEvent[]> {
         recordingUrl: meeting.recordingUrl,
         status: meeting.status,
         lessonTitle: meeting.lessonTitle,
+        hasAttendanceKeyword: meeting.hasAttendanceKeyword,
+        alreadyCheckedIn: meeting.alreadyCheckedIn,
       };
     });
+}
+
+/** Registra a presenca do aluno a partir da palavra-chave exibida no encontro. */
+export async function checkInMeeting(meetingId: string, keyword: string): Promise<void> {
+  await api.post(`/meetings/${meetingId}/check-in`, { keyword });
 }
