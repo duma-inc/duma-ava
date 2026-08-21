@@ -1,10 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { WeeklyPlanResponse, EnrollmentResponse, Exercise } from '../types/exercise';
+import { WeeklyPlanResponse, EnrollmentResponse, Exercise, DAILY_PLAN_COMPLETED } from '../types/exercise';
 import { fetchWeeklyPlan, fetchMyEnrollments } from '../services/weeklyPlanService';
 
-const CACHE_KEY = '@weekly_plan_v2';
+// v3: o plano passou a carregar a conclusao do dia (status COMPLETED + contadores);
+// planos cacheados no formato antigo apareceriam como pendentes.
+const CACHE_KEY = '@weekly_plan_v3';
 
 interface ExerciseContextData {
   weeklyPlan: WeeklyPlanResponse | null;
@@ -12,6 +14,10 @@ interface ExerciseContextData {
   isLoading: boolean;
   error: string | null;
   getExercisesForDate(dateStr: string): Exercise[];
+  /** Se o aluno ja entregou os exercicios dessa data. */
+  isDayCompleted(dateStr: string): boolean;
+  /** Reflete no plano local o dia que o backend acabou de fechar, sem refazer a requisicao. */
+  markDayCompletedLocally(dateStr: string, answeredCount: number, correctCount: number): void;
   refreshPlan(): Promise<void>;
 }
 
@@ -112,6 +118,39 @@ export const ExerciseProvider = ({ children }: { children: ReactNode }) => {
     ];
   }, [weeklyPlan]);
 
+  const isDayCompleted = useCallback((dateStr: string): boolean => {
+    const daily = weeklyPlan?.dailyPlans.find(d => d.date === dateStr);
+    return daily?.status === DAILY_PLAN_COMPLETED;
+  }, [weeklyPlan]);
+
+  const markDayCompletedLocally = useCallback((
+    dateStr: string,
+    answeredCount: number,
+    correctCount: number,
+  ) => {
+    setWeeklyPlan(previous => {
+      if (!previous) return previous;
+      const updated: WeeklyPlanResponse = {
+        ...previous,
+        dailyPlans: previous.dailyPlans.map(daily =>
+          daily.date === dateStr
+            ? {
+                ...daily,
+                status: DAILY_PLAN_COMPLETED,
+                completedAt: Date.now(),
+                answeredCount,
+                correctCount,
+              }
+            : daily
+        ),
+      };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
   const refreshPlan = useCallback(async () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(CACHE_KEY);
@@ -121,7 +160,16 @@ export const ExerciseProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ExerciseContext.Provider
-      value={{ weeklyPlan, enrollments, isLoading, error, getExercisesForDate, refreshPlan }}
+      value={{
+        weeklyPlan,
+        enrollments,
+        isLoading,
+        error,
+        getExercisesForDate,
+        isDayCompleted,
+        markDayCompletedLocally,
+        refreshPlan,
+      }}
     >
       {children}
     </ExerciseContext.Provider>

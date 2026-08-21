@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import api from '@/lib/api';
+import { createSpokenUtterance } from '@/lib/speechVoice';
 import { useFlashcardContext } from '@/store/FlashcardContext';
 
 interface Props {
@@ -110,7 +111,7 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
     }
   }
 
-  function handleSpeakWord() {
+  async function handleSpeakWord() {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       console.warn('Speech synthesis is not supported in this browser.');
       return;
@@ -123,10 +124,7 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-US';
-      utterance.pitch = 0.95;
-      utterance.rate = 0.85;
+      const utterance = await createSpokenUtterance(word, { pitch: 0.95, rate: 0.85 });
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);

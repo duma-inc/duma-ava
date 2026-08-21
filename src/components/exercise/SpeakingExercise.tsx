@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MicrophoneIcon, StopIcon } from '@heroicons/react/24/outline';
-import { Exercise } from '../../types/exercise';
+import { Exercise, SPOKEN_CONTENT_LANGUAGE } from '../../types/exercise';
 
 interface SpeechRecognitionEvent {
   results: {
@@ -102,7 +102,7 @@ export default function SpeakingExercise({ exercise, answered, isCorrect: isCorr
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = exercise.language || 'en-US';
+      recognition.lang = SPOKEN_CONTENT_LANGUAGE;
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 

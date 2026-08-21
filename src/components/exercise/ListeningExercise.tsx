@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SpeakerWaveIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 import { Exercise } from '../../types/exercise';
+import { createSpokenUtterance } from '@/lib/speechVoice';
 import { shuffleItems } from '../../lib/shuffle';
 
 interface Props {
@@ -38,7 +39,7 @@ export default function ListeningExercise({ exercise, answered, selectedAnswer, 
     };
   }, [exercise.id]);
 
-  const togglePlayback = () => {
+  const togglePlayback = async () => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       console.warn('Speech synthesis is not supported in this browser.');
       return;
@@ -49,10 +50,10 @@ export default function ListeningExercise({ exercise, answered, selectedAnswer, 
         window.speechSynthesis.cancel();
         setIsPlaying(false);
       } else {
-        const utterance = new SpeechSynthesisUtterance(exercise.description);
-        utterance.lang = exercise.language || 'en-US';
-        utterance.pitch = 0.95;
-        utterance.rate = 0.9;
+        const utterance = await createSpokenUtterance(exercise.description, {
+          pitch: 0.95,
+          rate: 0.9,
+        });
         utterance.onstart = () => setIsPlaying(true);
         utterance.onend = () => setIsPlaying(false);
         utterance.onerror = () => setIsPlaying(false);

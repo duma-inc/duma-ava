@@ -4,6 +4,7 @@ import React, { FormEvent, Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
+import { createSpokenUtterance } from "@/lib/speechVoice";
 import { useFlashcardContext } from "@/store/FlashcardContext";
 import {
   ArrowLeftIcon,
@@ -364,7 +365,7 @@ function FlashcardsReviewView() {
       ]
     : [];
 
-  function handleSpeakWord() {
+  async function handleSpeakWord() {
     if (!current || typeof window === "undefined" || !window.speechSynthesis) {
       return;
     }
@@ -376,10 +377,10 @@ function FlashcardsReviewView() {
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(current.front);
-      utterance.lang = "en-US";
-      utterance.pitch = 0.95;
-      utterance.rate = 0.9;
+      const utterance = await createSpokenUtterance(current.front, {
+        pitch: 0.95,
+        rate: 0.9,
+      });
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);

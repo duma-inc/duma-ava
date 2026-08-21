@@ -33,11 +33,19 @@ export interface Exercise {
   options: ExerciseOption[];
 }
 
+/** Dia ja entregue pelo aluno: nao pode ser refeito. */
+export const DAILY_PLAN_COMPLETED = 'COMPLETED';
+
 export interface DailyPlanResponse {
   date: string;
+  /** 'PENDING' | 'REST' | 'COMPLETED' */
   status: string;
   exercises: Exercise[];
   reinforcementExercises: Exercise[];
+  /** Epoch millis da conclusao; ausente enquanto o dia esta pendente. */
+  completedAt?: number | null;
+  answeredCount?: number | null;
+  correctCount?: number | null;
 }
 
 export interface WeeklyPlanResponse {
@@ -87,8 +95,35 @@ export const NON_RETRYABLE_TYPES: ExerciseType[] = ['ESSAY', 'TRUE_FALSE', 'SHOR
 /** Types that are never auto-corrected (always isCorrect: true, score: 0) */
 export const NON_CORRECTABLE_TYPES: ExerciseType[] = ['ESSAY', 'SHORT_ANSWER', 'SPEAKING'];
 
-/** Types whose body already renders the prompt — the shared header (description + translation toggle) is redundant or a spoiler */
-export const TYPES_WITHOUT_HEADER: ExerciseType[] = ['LISTENING', 'TRANSLATION'];
+/**
+ * Idioma do conteudo falado: TTS do LISTENING e reconhecimento de voz do SPEAKING.
+ *
+ * NAO usar `exercise.language` para isso. Esse campo guarda o idioma DO ALUNO
+ * (`pt-BR` em praticamente toda a base) e serve para enunciado e traducao — o que
+ * se ouve e se pronuncia e o conteudo do curso, que e em ingles. Usa-lo fazia o
+ * leitor narrar texto em ingles com voz portuguesa.
+ */
+export const SPOKEN_CONTENT_LANGUAGE = 'en-US';
+
+/**
+ * Tipos cujo corpo ja exibe o enunciado: o header do topo repetiria (SPEAKING,
+ * TRANSLATION) ou entregaria por escrito o audio que deveria ser ouvido (LISTENING).
+ */
+export const TYPES_WITHOUT_PROMPT_HEADER: ExerciseType[] = [
+  'LISTENING',
+  'TRANSLATION',
+  'SPEAKING',
+];
+
+/**
+ * Tipos que ja mostram o campo `translation` no proprio corpo, dispensando o
+ * botao "Ver traducao" do header. Hoje so LISTENING, onde esse campo nao e
+ * traducao e sim a pergunta de compreensao.
+ *
+ * Cuidado ao mexer: em SPEAKING o `translation` e a traducao real da frase
+ * (preenchida em 100% da base) e continua util atras do botao.
+ */
+export const TYPES_WITH_OWN_TRANSLATION: ExerciseType[] = ['LISTENING'];
 
 /** Map backend type to Portuguese label */
 export const TYPE_LABELS: Record<ExerciseType, string> = {

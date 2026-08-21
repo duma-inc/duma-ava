@@ -3,6 +3,8 @@
 import React from 'react';
 import { useExerciseContext } from '@/store/ExerciseContext';
 import { AcademicCapIcon, CalendarDaysIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import { DAILY_PLAN_COMPLETED } from '@/types/exercise';
 import Link from 'next/link';
 import CardButton from '@/components/ui/CardButton';
 import Button from '@/components/ui/Button';
@@ -63,17 +65,23 @@ export default function ExercitarPage() {
     const date = new Date(dp.date + 'T12:00:00');
     const dayOfWeek = date.getDay();
     const exerciseCount = dp.exercises.length + (dp.reinforcementExercises?.length ?? 0);
-    const isAvailable = dp.date <= today;
+    const isCompleted = dp.status === DAILY_PLAN_COMPLETED;
     const isToday = dp.date === today;
+
+    const hits =
+      dp.answeredCount != null && dp.correctCount != null
+        ? `Concluído — ${dp.correctCount}/${dp.answeredCount} acertos`
+        : 'Concluído';
 
     return {
       dateStr: dp.date,
       title: DAY_NAMES[dayOfWeek] ?? dp.date,
-      subtitle: `${exerciseCount} exercícios`,
+      subtitle: isCompleted ? hits : `${exerciseCount} exercícios`,
       color: isToday ? '#EDAA12' : '#7A4A12',
-      available: isAvailable,
+      // Um dia ja entregue nao pode ser refeito
+      available: dp.date <= today && !isCompleted,
       isToday,
-      status: dp.status,
+      isCompleted,
     };
   });
 
@@ -99,17 +107,34 @@ export default function ExercitarPage() {
       </h2>
 
       <div className="flex flex-col gap-3">
-        {days.map((dia) => (
-          dia.available ? (
-            <CardButton
-              key={dia.dateStr}
-              href={`/exercitar/${dia.dateStr}?dayLabel=${encodeURIComponent(dia.title)}`}
-              title={dia.isToday ? `${dia.title} (Hoje)` : dia.title}
-              subtitle={dia.subtitle}
-              color={dia.color}
-              icon={<CalendarDaysIcon className="w-9 h-9 text-white" />}
-            />
-          ) : (
+        {days.map((dia) => {
+          if (dia.isCompleted) {
+            return (
+              <CardButton
+                key={dia.dateStr}
+                title={dia.isToday ? `${dia.title} (Hoje)` : dia.title}
+                subtitle={dia.subtitle}
+                color="#10B981"
+                icon={<CheckCircleIcon className="w-9 h-9 text-white" />}
+                className="cursor-default hover:brightness-100 hover:scale-100 active:scale-100"
+              />
+            );
+          }
+
+          if (dia.available) {
+            return (
+              <CardButton
+                key={dia.dateStr}
+                href={`/exercitar/${dia.dateStr}?dayLabel=${encodeURIComponent(dia.title)}`}
+                title={dia.isToday ? `${dia.title} (Hoje)` : dia.title}
+                subtitle={dia.subtitle}
+                color={dia.color}
+                icon={<CalendarDaysIcon className="w-9 h-9 text-white" />}
+              />
+            );
+          }
+
+          return (
             <CardButton
               key={dia.dateStr}
               title={dia.title}
@@ -118,8 +143,8 @@ export default function ExercitarPage() {
               icon={<CalendarDaysIcon className="w-9 h-9 text-[#5A5A5A]" />}
               className="opacity-50 cursor-not-allowed"
             />
-          )
-        ))}
+          );
+        })}
       </div>
 
       {days.length === 0 && (

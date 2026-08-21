@@ -4,10 +4,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { XMarkIcon, FlagIcon, LightBulbIcon, ArrowRightIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useExercises } from '@/hooks/useExercises';
+import { useExerciseContext } from '@/store/ExerciseContext';
 import { useExerciseSound } from '@/hooks/useExerciseSound';
 import ExerciseRenderer from '@/components/exercise/ExerciseRenderer';
 import ReportIssueModal from '@/components/exercise/ReportIssueModal';
-import { TYPE_LABELS, TYPES_WITHOUT_HEADER } from '@/types/exercise';
+import {
+  TYPE_LABELS,
+  TYPES_WITHOUT_PROMPT_HEADER,
+  TYPES_WITH_OWN_TRANSLATION,
+} from '@/types/exercise';
 
 export default function ExercicioPage({ params }: { params: Promise<{ date: string }> | { date: string } }) {
   const router = useRouter();
@@ -19,6 +24,8 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
   const { playSound } = useExerciseSound();
   const [showTranslation, setShowTranslation] = useState(false);
   const [showReport, setShowReport] = useState(false);
+
+  const { isDayCompleted } = useExerciseContext();
 
   const {
     current,
@@ -38,7 +45,17 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
     next,
     submitAllAttempts,
     isSubmitting,
+    submitFailed,
   } = useExercises(dateStr);
+
+  // Dia ja entregue: nao pode ser refeito. Protege contra URL digitada a mao e contra um card
+  // renderizado a partir de um plano em cache antigo.
+  const alreadyCompleted = isDayCompleted(dateStr);
+  useEffect(() => {
+    if (alreadyCompleted) {
+      router.replace('/exercitar');
+    }
+  }, [alreadyCompleted, router]);
 
   const hasNavigated = useRef(false);
   useEffect(() => {
@@ -46,11 +63,11 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
       hasNavigated.current = true;
       submitAllAttempts().finally(() => {
         router.replace(
-          `/exercitar/result?totalCorrect=${totalCorrect}&totalWrong=${totalWrong}&pendingCorrection=${pendingCorrection}&total=${totalCorrect + totalWrong + pendingCorrection}`
+          `/exercitar/result?totalCorrect=${totalCorrect}&totalWrong=${totalWrong}&pendingCorrection=${pendingCorrection}&total=${totalCorrect + totalWrong + pendingCorrection}&submitFailed=${submitFailed}`
         );
       });
     }
-  }, [finished, submitAllAttempts, router, totalCorrect, totalWrong, pendingCorrection]);
+  }, [finished, submitAllAttempts, router, totalCorrect, totalWrong, pendingCorrection, submitFailed]);
 
   function handleAnswer(answer: string) {
     const isCorrect = submitAnswer(answer);
@@ -63,6 +80,14 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
     next();
   }
 
+  if (alreadyCompleted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <span className="text-text-primary text-base">Você já concluiu os exercícios deste dia.</span>
+      </div>
+    );
+  }
+
   if (!current) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -72,7 +97,10 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
   }
 
   // Tipos cujo corpo já exibe o enunciado — repetir no topo duplicaria ou entregaria a resposta
-  const hideHeader = TYPES_WITHOUT_HEADER.includes(current.type);
+  const hidePrompt = TYPES_WITHOUT_PROMPT_HEADER.includes(current.type);
+  // O botao de traducao some so quando o proprio corpo ja mostra esse campo.
+  const showTranslationToggle =
+    !!current.translation && !TYPES_WITH_OWN_TRANSLATION.includes(current.type);
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] -mt-6 -mx-4 sm:-mx-8 bg-background-dark">
@@ -117,26 +145,27 @@ export default function ExercicioPage({ params }: { params: Promise<{ date: stri
           </span>
         </div>
 
-        {!hideHeader && (
-          <>
-            {/* Enunciado */}
-            <h2 className="text-[20px] font-extrabold text-text-primary leading-[30px] mb-2">
-              {current.description}
-            </h2>
+        {/* Enunciado — omitido nos tipos cujo corpo já o exibe */}
+        {!hidePrompt && (
+          <h2 className="text-[20px] font-extrabold text-text-primary leading-[30px] mb-2">
+            {current.description}
+          </h2>
+        )}
 
+        {/* Tradução — LISTENING exibe esse campo no próprio corpo, como pergunta */}
+        {showTranslationToggle && (
+          <>
             {/* Botão tradução */}
-            {current.translation && (
-              <button
-                onClick={() => setShowTranslation(!showTranslation)}
-                className="flex flex-row items-center gap-1.5 mb-2 self-start text-primary-darker hover:text-primary transition-colors font-semibold text-[13px] cursor-pointer"
-              >
-                <GlobeAltIcon className="w-4 h-4" />
-                {showTranslation ? 'Ocultar tradução' : 'Ver tradução'}
-              </button>
-            )}
+            <button
+              onClick={() => setShowTranslation(!showTranslation)}
+              className="flex flex-row items-center gap-1.5 mb-2 self-start text-primary-darker hover:text-primary transition-colors font-semibold text-[13px] cursor-pointer"
+            >
+              <GlobeAltIcon className="w-4 h-4" />
+              {showTranslation ? 'Ocultar tradução' : 'Ver tradução'}
+            </button>
 
             {/* Tradução */}
-            {showTranslation && current.translation && (
+            {showTranslation && (
               <div className="bg-[#1C1C1C] rounded-xl border border-primary-darker/40 p-3 mb-4">
                 <span className="text-primary-dark text-sm italic">{current.translation}</span>
               </div>

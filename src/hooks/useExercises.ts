@@ -114,10 +114,12 @@ interface UseExercisesReturn {
   next: () => void;
   submitAllAttempts: () => Promise<void>;
   isSubmitting: boolean;
+  /** O envio das respostas falhou — o dia continua pendente e podera ser refeito. */
+  submitFailed: boolean;
 }
 
 export function useExercises(dateStr: string): UseExercisesReturn {
-  const { getExercisesForDate } = useExerciseContext();
+  const { getExercisesForDate, markDayCompletedLocally } = useExerciseContext();
   const allExercises = useMemo(() => getExercisesForDate(dateStr), [dateStr, getExercisesForDate]);
 
   const [exerciseQueue, setExerciseQueue] = useState<Exercise[]>(allExercises);
@@ -128,6 +130,7 @@ export function useExercises(dateStr: string): UseExercisesReturn {
   const [finished, setFinished] = useState(false);
   const [retryRound, setRetryRound] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitFailed, setSubmitFailed] = useState(false);
   const [questionStart, setQuestionStart] = useState(Date.now());
 
   const resultsRef = useRef<ExerciseResult[]>([]);
@@ -148,6 +151,17 @@ export function useExercises(dateStr: string): UseExercisesReturn {
     }
     return Array.from(map.values());
   }, [results]);
+
+  // Ids distintos entregues no dia — o mesmo exercicio pode aparecer duas vezes quando o aluno
+  // refaz as erradas dentro da propria sessao.
+  const answeredIds = useMemo(
+    () => new Set(uniqueResults.map((r) => r.exerciseId)),
+    [uniqueResults],
+  );
+  const correctIds = useMemo(
+    () => new Set(uniqueResults.filter((r) => r.isCorrect).map((r) => r.exerciseId)),
+    [uniqueResults],
+  );
 
   const totalCorrect = uniqueResults.filter((r) => r.isCorrect).length;
   const totalWrong = uniqueResults.filter((r) => !r.isCorrect && !NON_RETRYABLE_TYPES.includes(r.type)).length;
@@ -225,14 +239,23 @@ export function useExercises(dateStr: string): UseExercisesReturn {
     if (toSubmit.length === 0) return;
     setIsSubmitting(true);
     try {
-      await submitAttemptsBatch(toSubmit);
+      await submitAttemptsBatch(toSubmit, dateStr);
       console.log('[useExercises] Attempts submitted successfully:', toSubmit.length);
+      markDayCompletedLocally(dateStr, answeredIds.size, correctIds.size);
     } catch (err: any) {
+      // 409 = o backend ja tinha fechado esse dia (retry de rede, ou o aluno voltou por uma
+      // tela em cache). O resultado da sessao continua valido; so nao ha nada a gravar.
+      if (err?.response?.status === 409) {
+        console.log('[useExercises] Day already submitted, keeping the existing result');
+        markDayCompletedLocally(dateStr, answeredIds.size, correctIds.size);
+        return;
+      }
       console.error('[useExercises] Failed to submit attempts:', err?.message || err);
+      setSubmitFailed(true);
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting]);
+  }, [isSubmitting, dateStr, markDayCompletedLocally, answeredIds, correctIds]);
 
   function skipExercise() {
     if (!current) return;
@@ -270,5 +293,6 @@ export function useExercises(dateStr: string): UseExercisesReturn {
     next,
     submitAllAttempts,
     isSubmitting,
+    submitFailed,
   };
 }

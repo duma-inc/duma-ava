@@ -16,6 +16,7 @@ import NotificationCard, { NotificationItem } from "@/components/ui/Notification
 import {
   BookOpenIcon,
   AcademicCapIcon,
+  UserGroupIcon,
   ClipboardDocumentIcon,
   CalendarIcon,
   CheckIcon,
@@ -30,6 +31,7 @@ interface DashboardMetrics {
     dailyExercisesPaceRate: number;
     totalExercisesSubmitted: number;
     completedLessonsCount: number;
+    totalLessonsCount: number;
   };
 }
 
@@ -93,13 +95,21 @@ export default function ProgressoPage() {
         { name: "S6", nota: 0 },
       ];
 
+  // "2 de 12" com a barra no percentual real do curso. Sem lições cadastradas o total vem 0 —
+  // nesse caso a barra fica vazia em vez de dividir por zero.
+  const completedLessons = metricsData?.metrics?.completedLessonsCount ?? 0;
+  const totalLessons = metricsData?.metrics?.totalLessonsCount ?? 0;
+  const lessonsPercent = totalLessons > 0
+    ? Math.round((completedLessons / totalLessons) * 100)
+    : 0;
+
   const metricas = [
     {
-      label: "Frequência de Prática",
+      label: "Frequência em Encontros",
       value: metricsData?.metrics?.classAttendanceRate ?? 0,
       percent: metricsData?.metrics?.classAttendanceRate ?? 0,
       color: "#FDA91E",
-      icon: <AcademicCapIcon className="w-4 h-4 text-[#FDA91E]" />,
+      icon: <UserGroupIcon className="w-4 h-4 text-[#FDA91E]" />,
       suffix: "%",
     },
     {
@@ -120,10 +130,10 @@ export default function ProgressoPage() {
     },
     {
       label: "Lessons Concluídas",
-      value: metricsData?.metrics?.completedLessonsCount ?? 0,
-      percent: 100,
+      value: `${completedLessons} de ${totalLessons}`,
+      percent: lessonsPercent,
       color: "#D88A00",
-      icon: <CheckIcon className="w-4 h-4 text-[#D88A00]" />,
+      icon: <AcademicCapIcon className="w-4 h-4 text-[#D88A00]" />,
       suffix: "",
     },
   ];

@@ -14,5 +14,10 @@ export const fetchWeeklyPlan = async (skillId: string | number) => {
 export const fetchMyEnrollments = () =>
   api.get<EnrollmentResponse[]>('/enrollments/me');
 
-export const submitAttemptsBatch = (attempts: AttemptPayload[]) =>
-  api.post('/attempts/batch', attempts);
+/**
+ * Entrega a sessao inteira. `planDate` (yyyy-MM-dd) diz ao backend qual dia do plano foi
+ * concluido — e o que fecha o dia e impede refazer os exercicios. Um segundo envio para a
+ * mesma data responde 409.
+ */
+export const submitAttemptsBatch = (attempts: AttemptPayload[], planDate: string) =>
+  api.post(`/attempts/batch?planDate=${encodeURIComponent(planDate)}`, attempts);

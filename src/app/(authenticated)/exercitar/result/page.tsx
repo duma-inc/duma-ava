@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CheckIcon, XMarkIcon, ClockIcon, SparklesIcon, HomeIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, ClockIcon, SparklesIcon, HomeIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
 function ResultContent() {
@@ -12,6 +12,7 @@ function ResultContent() {
   const totalWrong = parseInt(searchParams.get('totalWrong') ?? '0', 10);
   const pendingCorrection = parseInt(searchParams.get('pendingCorrection') ?? '0', 10);
   const total = parseInt(searchParams.get('total') ?? '0', 10);
+  const submitFailed = searchParams.get('submitFailed') === 'true';
 
   const scorePercentage = total > 0 ? Math.round((totalCorrect / total) * 100) : 0;
 
@@ -93,6 +94,16 @@ function ResultContent() {
           <SparklesIcon className="w-5 h-5 text-primary mt-0.5 shrink-0" />
           <span className="text-text-primary text-[13px] leading-[18px] flex-1">
             {pendingCorrection} exercício{pendingCorrection > 1 ? 's' : ''} ainda {pendingCorrection > 1 ? 'estão' : 'está'} em correção pela IA. O resultado será atualizado quando a correção for concluída.
+          </span>
+        </div>
+      )}
+
+      {/* Envio falhou: o dia continua pendente e o aluno podera refaze-lo */}
+      {submitFailed && (
+        <div className="bg-[#3D1A1A] border border-danger rounded-xl p-3.5 mt-4 w-full flex flex-row gap-2.5">
+          <ExclamationTriangleIcon className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+          <span className="text-text-primary text-[13px] leading-[18px] flex-1">
+            Não foi possível salvar suas respostas. O dia continua disponível em Exercitar — tente novamente quando estiver conectado.
           </span>
         </div>
       )}
