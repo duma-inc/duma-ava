@@ -7,7 +7,8 @@ export type ExerciseType =
   | 'SHORT_ANSWER'
   | 'ESSAY'
   | 'SPEAKING'
-  | 'LISTENING';
+  | 'LISTENING'
+  | 'ORDER';
 
 export interface ExerciseOption {
   optionId: string;
@@ -35,6 +36,12 @@ export interface Exercise {
 
 /** Dia ja entregue pelo aluno: nao pode ser refeito. */
 export const DAILY_PLAN_COMPLETED = 'COMPLETED';
+
+/**
+ * Dia de descanso: o aluno nao escolheu esse dia da semana em Ritmo, entao o backend cria a
+ * entrada vazia (`WeeklyPlanService` precisa dos 7 dias) e nao ha exercicios a fazer.
+ */
+export const DAILY_PLAN_REST = 'REST';
 
 export interface DailyPlanResponse {
   date: string;
@@ -136,4 +143,75 @@ export const TYPE_LABELS: Record<ExerciseType, string> = {
   ESSAY: 'Redação',
   SPEAKING: 'Pronúncia / Speaking',
   LISTENING: 'Compreensão Auditiva / Listening',
+  ORDER: 'Ordenar a frase',
 };
+
+/**
+ * ORDER (ordenar palavras) nao tem campo proprio no schema: o gabarito mora no
+ * mesmo `options` dos demais tipos, com o `matchKey` carregando a posicao — o
+ * mesmo overload que MATCHING ja faz com o pareamento.
+ *
+ *   { text: 'He',   matchKey: '1',   isCorrect: true }  <- palavra na posicao 1
+ *   { text: 'is',   matchKey: '2',   isCorrect: true }
+ *   { text: 'He is with his wife in Paris', matchKey: 'ALT', isCorrect: true }
+ *
+ * O banco de palavras que o aluno ve e so a lista de tokens, embaralhada; as
+ * opcoes 'ALT' sao ordens alternativas aceitas e nunca aparecem na tela.
+ */
+export const ORDER_ALT_MATCH_KEY = 'ALT';
+
+/** Le o matchKey aceitando o snake_case que o backend as vezes devolve. */
+function readMatchKey(option: ExerciseOption): string {
+  return (option.matchKey ?? (option as unknown as { match_key?: string }).match_key ?? '').trim();
+}
+
+export interface ParsedOrderExercise {
+  /** Palavras do gabarito, ja na ordem correta. */
+  tokens: ExerciseOption[];
+  /** Frases completas tambem aceitas como corretas. */
+  alternatives: string[];
+}
+
+export function parseOrderExercise(exercise: Exercise): ParsedOrderExercise {
+  const options = exercise.options ?? [];
+  const tokens = options
+    .filter((option) => /^\d+$/.test(readMatchKey(option)))
+    .sort((a, b) => Number(readMatchKey(a)) - Number(readMatchKey(b)));
+  const alternatives = options
+    .filter((option) => readMatchKey(option).toUpperCase() === ORDER_ALT_MATCH_KEY)
+    .map((option) => option.text)
+    .filter((text) => Boolean(text?.trim()));
+  return { tokens, alternatives };
+}
+
+/**
+ * Normalizacao usada para comparar a frase montada com o gabarito: minusculas,
+ * sem acento, sem pontuacao, espacos colapsados.
+ *
+ * Precisa concordar com `OrderExerciseSupport.normalize` do duma-backend (usada no
+ * teste de nivelamento) e com a copia deste arquivo no duma-mobile — senao o aluno
+ * acerta num lugar e erra no outro.
+ */
+export function normalizeSentence(sentence: string): string {
+  return (sentence ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/**
+ * Correcao do ORDER: comparacao exata (normalizada) com o gabarito e com cada
+ * ordem alternativa. Sem tolerancia difusa de proposito — trocar uma palavra de
+ * lugar e exatamente o erro que este exercicio precisa reprovar.
+ */
+export function isOrderAnswerCorrect(exercise: Exercise, userAnswer: string): boolean {
+  const { tokens, alternatives } = parseOrderExercise(exercise);
+  if (tokens.length === 0) return false;
+  const answer = normalizeSentence(userAnswer);
+  if (!answer) return false;
+  return [tokens.map((token) => token.text).join(' '), ...alternatives]
+    .map(normalizeSentence)
+    .includes(answer);
+}

@@ -9,6 +9,7 @@ import EssayExercise from './EssayExercise';
 import MatchingExercise from './MatchingExercise';
 import SpeakingExercise from './SpeakingExercise';
 import ListeningExercise from './ListeningExercise';
+import OrderExercise from './OrderExercise';
 
 interface Props {
   exercise: Exercise;
@@ -18,26 +19,33 @@ interface Props {
   onAnswer: (answer: string) => void;
 }
 
+/**
+ * O `key={exercise.id}` em cada case e obrigatorio: sem ele o React reaproveita a
+ * instancia entre exercicios do mesmo tipo e o estado interno (frase montada,
+ * pares selecionados) vaza de um para o outro.
+ */
 export default function ExerciseRenderer({ exercise, answered, isCorrect, selectedAnswer, onAnswer }: Props) {
   switch (exercise.type) {
     case 'MULTIPLE_CHOICE':
-      return <MultipleChoiceExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <MultipleChoiceExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'FILL_IN_THE_BLANK':
-      return <FillBlankExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <FillBlankExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'TRANSLATION':
-      return <TranslateExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <TranslateExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'TRUE_FALSE':
-      return <TrueFalseExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <TrueFalseExercise key={exercise.id} exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'SHORT_ANSWER':
-      return <ShortAnswerExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <ShortAnswerExercise key={exercise.id} exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'ESSAY':
-      return <EssayExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <EssayExercise key={exercise.id} exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'MATCHING':
-      return <MatchingExercise exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <MatchingExercise key={exercise.id} exercise={exercise} answered={answered} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'SPEAKING':
-      return <SpeakingExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <SpeakingExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     case 'LISTENING':
-      return <ListeningExercise exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+      return <ListeningExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
+    case 'ORDER':
+      return <OrderExercise key={exercise.id} exercise={exercise} answered={answered} isCorrect={isCorrect} selectedAnswer={selectedAnswer} onAnswer={onAnswer} />;
     default:
       return null;
   }

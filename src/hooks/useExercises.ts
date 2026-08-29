@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { Exercise, ExerciseResult, AttemptPayload, NON_RETRYABLE_TYPES, NON_CORRECTABLE_TYPES } from '../types/exercise';
+import { Exercise, ExerciseResult, AttemptPayload, NON_RETRYABLE_TYPES, NON_CORRECTABLE_TYPES, isOrderAnswerCorrect } from '../types/exercise';
 import { useExerciseContext } from '../store/ExerciseContext';
 import { submitAttemptsBatch } from '../services/weeklyPlanService';
 
@@ -51,6 +51,13 @@ function levenshtein(a: string, b: string): number {
 function checkAnswer(exercise: Exercise, userAnswer: string): boolean {
   if (NON_CORRECTABLE_TYPES.includes(exercise.type)) {
     return true;
+  }
+
+  // ORDER: a resposta e a frase inteira montada pelo aluno. Precisa vir antes do
+  // caminho generico, cujo Levenshtein <= 2 aceitaria uma palavra fora de lugar --
+  // justamente o erro que este tipo tem de reprovar.
+  if (exercise.type === 'ORDER') {
+    return isOrderAnswerCorrect(exercise, userAnswer);
   }
 
   // MATCHING: answer is JSON of pairs { termText: defText }
