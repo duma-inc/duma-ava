@@ -191,6 +191,10 @@ function PerfilTab() {
 type DiaSemana = "Seg" | "Ter" | "Qua" | "Qui" | "Sex" | "Sáb" | "Dom";
 const DIAS: DiaSemana[] = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
+// Regra de produto espelhada no backend: `UpdateStudyPreferencesRequest.MIN_STUDY_DAYS`.
+// Salvar com menos que isso responde 400 com a mensagem pronta para exibir.
+const MIN_DIAS_ESTUDO = 4;
+
 // Cada meta corresponde a um pace da matrícula (CASUAL, MODERATE, REGULAR, AGGRESSIVE),
 // que é quem define a quantidade diária no plano semanal.
 type Meta = 10 | 15 | 20 | 30;
@@ -271,8 +275,10 @@ function RitmoTab() {
   }
 
   async function handleSave() {
-    if (diasAtivos.length === 0) {
-      setError("Selecione pelo menos um dia de estudo.");
+    // O backend recusa o mesmo caso com 400; checar aqui evita a ida até o servidor.
+    if (diasAtivos.length < MIN_DIAS_ESTUDO) {
+      setSuccess(false);
+      setError(`O mínimo são ${MIN_DIAS_ESTUDO} dias de estudo por semana.`);
       return;
     }
     try {
@@ -289,9 +295,13 @@ function RitmoTab() {
       await refreshPlan();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[Ritmo] Error saving study preferences:", err);
-      setError("Erro ao salvar suas preferências. Tente novamente.");
+      // 400 = regra de negócio recusada (dias de estudo, meta inválida): a mensagem do
+      // backend já está escrita para o aluno ler.
+      const response = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      const message = response?.status === 400 ? response?.data?.message : null;
+      setError(message || "Erro ao salvar suas preferências. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -335,7 +345,7 @@ function RitmoTab() {
           })}
         </div>
         <span className="block text-[11px] text-primary-dark mt-2.5">
-          {diasAtivos.length} dia{diasAtivos.length !== 1 ? "s" : ""} selecionado{diasAtivos.length !== 1 ? "s" : ""}
+          {diasAtivos.length} dia{diasAtivos.length !== 1 ? "s" : ""} selecionado{diasAtivos.length !== 1 ? "s" : ""} · mínimo {MIN_DIAS_ESTUDO}
         </span>
       </div>
 

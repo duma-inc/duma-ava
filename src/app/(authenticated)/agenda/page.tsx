@@ -6,6 +6,7 @@ import ViewToggle, { ViewMode } from "@/components/ui/ViewToggle";
 import EventCard, { AgendaEvent } from "@/components/ui/EventCard";
 import { fetchMeetingsAgenda } from "@/services/meetingService";
 import MeetingDetailsModal from "@/components/ui/MeetingDetailsModal";
+import { formatLocalDateKey } from "@/lib/date";
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -35,7 +36,7 @@ function getMonthGrid(year: number, month: number): (Date | null)[][] {
 }
 
 function fmt(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return formatLocalDateKey(d);
 }
 
 const MONTH_NAMES = [

@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useExerciseContext } from '@/store/ExerciseContext';
-import { AcademicCapIcon, CalendarDaysIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { AcademicCapIcon, CalendarDaysIcon, ExclamationCircleIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { DAILY_PLAN_COMPLETED } from '@/types/exercise';
+import { DAILY_PLAN_COMPLETED, DAILY_PLAN_REST } from '@/types/exercise';
 import Link from 'next/link';
 import CardButton from '@/components/ui/CardButton';
 import Button from '@/components/ui/Button';
@@ -66,6 +66,9 @@ export default function ExercitarPage() {
     const dayOfWeek = date.getDay();
     const exerciseCount = dp.exercises.length + (dp.reinforcementExercises?.length ?? 0);
     const isCompleted = dp.status === DAILY_PLAN_COMPLETED;
+    // Dia fora dos escolhidos em Ritmo: vem vazio de proposito. Cair no `exerciseCount` cobre
+    // planos antigos, gerados antes do status REST existir.
+    const isRest = !isCompleted && (dp.status === DAILY_PLAN_REST || exerciseCount === 0);
     const isToday = dp.date === today;
 
     const hits =
@@ -78,10 +81,11 @@ export default function ExercitarPage() {
       title: DAY_NAMES[dayOfWeek] ?? dp.date,
       subtitle: isCompleted ? hits : `${exerciseCount} exercícios`,
       color: isToday ? '#EDAA12' : '#7A4A12',
-      // Um dia ja entregue nao pode ser refeito
-      available: dp.date <= today && !isCompleted,
+      // Um dia ja entregue nao pode ser refeito; um dia de descanso nao tem o que abrir.
+      available: dp.date <= today && !isCompleted && !isRest,
       isToday,
       isCompleted,
+      isRest,
     };
   });
 
@@ -117,6 +121,19 @@ export default function ExercitarPage() {
                 color="#10B981"
                 icon={<CheckCircleIcon className="w-9 h-9 text-white" />}
                 className="cursor-default hover:brightness-100 hover:scale-100 active:scale-100"
+              />
+            );
+          }
+
+          if (dia.isRest) {
+            return (
+              <CardButton
+                key={dia.dateStr}
+                title={dia.isToday ? `${dia.title} (Hoje)` : dia.title}
+                subtitle="Dia de descanso"
+                color="#3A3A3A"
+                icon={<MoonIcon className="w-9 h-9 text-[#5A5A5A]" />}
+                className="opacity-50 cursor-default hover:brightness-100 hover:scale-100 active:scale-100"
               />
             );
           }

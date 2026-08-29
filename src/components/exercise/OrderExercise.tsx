@@ -6,12 +6,10 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
-  useDroppable,
+  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core';
@@ -23,7 +21,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowUturnLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Exercise, parseOrderExercise } from '../../types/exercise';
 import { shuffleItems } from '../../lib/shuffle';
 
@@ -35,53 +33,45 @@ interface Props {
   onAnswer: (answer: string) => void;
 }
 
-/** Uma palavra do banco. O id e proprio porque a mesma palavra pode repetir na frase. */
+/** Uma palavra da frase. O id e proprio porque a mesma palavra pode repetir. */
 interface Word {
   id: string;
   text: string;
 }
 
-const ANSWER = 'answer';
-const BANK = 'bank';
+/**
+ * Embaralha ate nao cair na ordem correta — comecar ja respondido entregaria o
+ * exercicio de graca. Com 2 palavras so ha uma alternativa, entao inverte.
+ */
+function shuffleAwayFromAnswer(words: Word[]): string[] {
+  const answer = words.map((w) => w.id).join('|');
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = shuffleItems(words).map((w) => w.id);
+    if (candidate.join('|') !== answer) return candidate;
+  }
+  return [...words].reverse().map((w) => w.id);
+}
 
-function WordChip({
-  word,
-  disabled,
-  onClick,
-  variant,
-}: {
-  word: Word;
-  disabled: boolean;
-  onClick: () => void;
-  variant: 'answer' | 'bank';
-}) {
+function WordChip({ word, disabled }: { word: Word; disabled: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: word.id,
     disabled,
   });
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0 : 1,
-  };
-
-  const palette =
-    variant === 'answer'
-      ? 'bg-primary-darker/40 border-primary text-text-primary'
-      : 'bg-surface border-primary-darker text-text-primary hover:bg-primary-darker/20';
-
   return (
     <button
       ref={setNodeRef}
-      style={style}
       type="button"
       disabled={disabled}
-      onClick={onClick}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1,
+      }}
       {...attributes}
       {...listeners}
-      className={`border-[1.5px] rounded-xl px-3.5 py-2 text-[15px] font-bold transition-colors touch-none select-none ${palette} ${
-        disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+      className={`border-[1.5px] rounded-xl px-3.5 py-2 text-[15px] font-bold touch-none select-none transition-colors bg-surface border-primary-darker text-text-primary ${
+        disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing hover:border-primary'
       }`}
     >
       {word.text}
@@ -89,28 +79,15 @@ function WordChip({
   );
 }
 
-/** Zona que aceita soltar mesmo quando esta vazia. */
-function DropZone({
-  id,
-  children,
-  className,
-}: {
-  id: string;
-  children: React.ReactNode;
-  className: string;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div ref={setNodeRef} className={`${className} ${isOver ? 'border-primary' : ''}`}>
-      {children}
-    </div>
-  );
-}
-
 /**
- * ORDER: o aluno monta a frase arrastando as palavras embaralhadas do banco para a
- * linha de resposta (e reordenando la dentro). Tocar numa palavra tambem a move —
- * caminho secundario, mais rapido no celular e disponivel se o arraste falhar.
+ * ORDER: o aluno arrasta as palavras para deixa-las na ordem certa.
+ *
+ * A ordem e montada no proprio lugar — a lista que aparece na tela ja e a
+ * resposta. A primeira versao tinha duas areas (um "banco" e uma "linha de
+ * resposta") e o aluno precisava mover as palavras de uma para a outra; como o
+ * enunciado pede "coloque as palavras na ordem correta", o gesto natural era
+ * reordenar no banco mesmo, a linha de resposta ficava vazia e o botao de
+ * confirmar nunca habilitava.
  */
 export default function OrderExercise({ exercise, answered, isCorrect, onAnswer }: Props) {
   const words = useMemo<Word[]>(
@@ -122,147 +99,52 @@ export default function OrderExercise({ exercise, answered, isCorrect, onAnswer 
     [exercise],
   );
 
-  const [bank, setBank] = useState<string[]>(() => shuffleItems(words).map((word) => word.id));
-  const [answer, setAnswer] = useState<string[]>([]);
+  const [order, setOrder] = useState<string[]>(() => shuffleAwayFromAnswer(words));
   const [draggingId, setDraggingId] = useState<UniqueIdentifier | null>(null);
 
   const byId = useMemo(() => new Map(words.map((word) => [word.id, word])), [words]);
-  const sentence = answer.map((id) => byId.get(id)?.text ?? '').join(' ');
-  const complete = bank.length === 0 && answer.length > 0;
+  const sentence = order.map((id) => byId.get(id)?.text ?? '').join(' ');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  function containerOf(id: UniqueIdentifier): typeof ANSWER | typeof BANK | null {
-    if (id === ANSWER || id === BANK) return id as typeof ANSWER | typeof BANK;
-    if (answer.includes(String(id))) return ANSWER;
-    if (bank.includes(String(id))) return BANK;
-    return null;
-  }
-
-  /** Move a palavra entre o banco e a resposta, inserindo na posicao apontada. */
-  function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return;
-    const from = containerOf(active.id);
-    const to = containerOf(over.id);
-    if (!from || !to || from === to) return;
-
-    const id = String(active.id);
-    const target = to === ANSWER ? answer : bank;
-    const overIndex = target.indexOf(String(over.id));
-    const insertAt = overIndex === -1 ? target.length : overIndex;
-
-    if (to === ANSWER) {
-      setBank((current) => current.filter((item) => item !== id));
-      setAnswer((current) => [...current.slice(0, insertAt), id, ...current.slice(insertAt)]);
-    } else {
-      setAnswer((current) => current.filter((item) => item !== id));
-      setBank((current) => [...current.slice(0, insertAt), id, ...current.slice(insertAt)]);
-    }
-  }
-
-  /** Reordena dentro da mesma lista. */
   function handleDragEnd({ active, over }: DragEndEvent) {
     setDraggingId(null);
     if (!over || active.id === over.id) return;
-    const from = containerOf(active.id);
-    if (from !== containerOf(over.id)) return;
-
-    const list = from === ANSWER ? answer : bank;
-    const setList = from === ANSWER ? setAnswer : setBank;
-    const oldIndex = list.indexOf(String(active.id));
-    const newIndex = list.indexOf(String(over.id));
-    if (oldIndex === -1 || newIndex === -1) return;
-    setList(arrayMove(list, oldIndex, newIndex));
+    setOrder((current) => {
+      const from = current.indexOf(String(active.id));
+      const to = current.indexOf(String(over.id));
+      if (from === -1 || to === -1) return current;
+      return arrayMove(current, from, to);
+    });
   }
 
-  function moveToAnswer(id: string) {
-    setBank((current) => current.filter((item) => item !== id));
-    setAnswer((current) => [...current, id]);
-  }
-
-  function moveToBank(id: string) {
-    setAnswer((current) => current.filter((item) => item !== id));
-    setBank((current) => [...current, id]);
-  }
-
-  function reset() {
-    setAnswer([]);
-    setBank(shuffleItems(words).map((word) => word.id));
-  }
-
-  const zone =
-    'flex flex-row flex-wrap gap-2 min-h-[64px] border-[1.5px] border-dashed rounded-xl p-3 transition-colors';
+  if (words.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-primary-dark">
+        Arraste as palavras para a ordem correta
+      </p>
+
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={closestCenter}
         onDragStart={({ active }: DragStartEvent) => setDraggingId(active.id)}
-        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setDraggingId(null)}
       >
-        {/* Linha de resposta */}
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-primary-dark mb-2">
-            Sua frase
-          </p>
-          <SortableContext items={answer} strategy={rectSortingStrategy}>
-            <DropZone id={ANSWER} className={`${zone} border-primary-darker bg-surface/60`}>
-              {answer.length === 0 && (
-                <span className="text-sm text-primary-darker self-center">
-                  Arraste ou toque nas palavras abaixo para montar a frase.
-                </span>
-              )}
-              {answer.map((id) => {
-                const word = byId.get(id);
-                if (!word) return null;
-                return (
-                  <WordChip
-                    key={id}
-                    word={word}
-                    variant="answer"
-                    disabled={answered}
-                    onClick={() => moveToBank(id)}
-                  />
-                );
-              })}
-            </DropZone>
-          </SortableContext>
-        </div>
-
-        {/* Banco de palavras */}
-        <div className="mt-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-primary-dark mb-2">
-            Palavras
-          </p>
-          <SortableContext items={bank} strategy={rectSortingStrategy}>
-            <DropZone id={BANK} className={`${zone} border-primary-darker/60`}>
-              {bank.length === 0 && (
-                <span className="text-sm text-primary-darker self-center">
-                  Todas as palavras foram usadas.
-                </span>
-              )}
-              {bank.map((id) => {
-                const word = byId.get(id);
-                if (!word) return null;
-                return (
-                  <WordChip
-                    key={id}
-                    word={word}
-                    variant="bank"
-                    disabled={answered}
-                    onClick={() => moveToAnswer(id)}
-                  />
-                );
-              })}
-            </DropZone>
-          </SortableContext>
-        </div>
+        <SortableContext items={order} strategy={rectSortingStrategy}>
+          <div className="flex flex-row flex-wrap gap-2 min-h-[64px] border-[1.5px] border-dashed border-primary-darker rounded-xl p-3 bg-surface/60">
+            {order.map((id) => {
+              const word = byId.get(id);
+              if (!word) return null;
+              return <WordChip key={id} word={word} disabled={answered} />;
+            })}
+          </div>
+        </SortableContext>
 
         {/* A palavra arrastada segue o cursor */}
         <DragOverlay>
@@ -274,29 +156,31 @@ export default function OrderExercise({ exercise, answered, isCorrect, onAnswer 
         </DragOverlay>
       </DndContext>
 
+      {/* Previa da frase montada, para o aluno ler o que vai enviar */}
+      {!answered && (
+        <p className="text-sm text-primary-dark">
+          Sua frase: <span className="text-text-primary font-semibold">{sentence}</span>
+        </p>
+      )}
+
       {/* Acoes */}
       {!answered && (
         <div className="flex flex-row gap-2.5 items-center mt-2">
           <button
             type="button"
-            onClick={reset}
-            aria-label="Recomeçar"
+            onClick={() => setOrder(shuffleAwayFromAnswer(words))}
+            aria-label="Embaralhar de novo"
             className="w-[52px] h-[52px] rounded-xl border-[1.5px] border-primary-darker bg-surface flex items-center justify-center hover:bg-primary-darker/20 transition-colors cursor-pointer"
           >
-            <ArrowUturnLeftIcon className="w-5 h-5 text-danger" />
+            <ArrowPathIcon className="w-5 h-5 text-primary-dark" />
           </button>
 
           <button
             type="button"
             onClick={() => onAnswer(sentence)}
-            disabled={!complete}
-            className={`flex-1 h-[52px] rounded-xl border-[1.5px] flex flex-row items-center justify-center gap-2 font-extrabold text-[15px] transition-all ${
-              complete
-                ? 'bg-primary border-primary-dark text-black hover:brightness-110 active:scale-[0.98] cursor-pointer'
-                : 'bg-surface border-[#2A2A2A] text-[#3A3A3A] cursor-not-allowed'
-            }`}
+            className="flex-1 h-[52px] rounded-xl border-[1.5px] flex flex-row items-center justify-center gap-2 font-extrabold text-[15px] transition-all bg-primary border-primary-dark text-black hover:brightness-110 active:scale-[0.98] cursor-pointer"
           >
-            <CheckCircleIcon className={`w-5 h-5 ${complete ? 'text-black' : 'text-[#3A3A3A]'}`} />
+            <CheckCircleIcon className="w-5 h-5 text-black" />
             Confirmar
           </button>
         </div>

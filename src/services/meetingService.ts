@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import { formatLocalDateKey, getDeviceTimeZone } from '../lib/date';
 import { AgendaEvent, EventType } from '../components/ui/EventCard';
 
 interface AgendaMeetingDto {
@@ -56,10 +57,12 @@ function formatTime(dateString: string) {
 }
 
 export async function fetchMeetingsAgenda(): Promise<AgendaEvent[]> {
-  const res = await api.get<MeetingsAgendaResponse>('/meetings/agenda');
+  const res = await api.get<MeetingsAgendaResponse>('/meetings/agenda', {
+    params: { timeZone: getDeviceTimeZone() },
+  });
 
   return [...(res.data.meetings || [])]
-    .sort((a, b) => a.scheduledStart.localeCompare(b.scheduledStart))
+    .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
     .map<AgendaEvent>((meeting) => {
       const mappedType = mapMeetingType(meeting.meetingType);
 
@@ -70,7 +73,7 @@ export async function fetchMeetingsAgenda(): Promise<AgendaEvent[]> {
         badgeLabel: mappedType.label,
         time: formatTime(meeting.scheduledStart),
         description: meeting.description,
-        date: meeting.scheduledStart.split('T')[0],
+        date: formatLocalDateKey(meeting.scheduledStart),
         scheduledStart: meeting.scheduledStart,
         meetingUrl: meeting.meetingUrl,
         recordingUrl: meeting.recordingUrl,
