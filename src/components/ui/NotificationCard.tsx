@@ -44,7 +44,6 @@ export default function NotificationCard({ notification, onRead }: NotificationC
       className={`bg-surface rounded-xl p-4 mb-2.5 border border-primary-darker shadow-md transition-all ${
         !notification.isRead ? 'cursor-pointer hover:border-primary-light' : 'opacity-70'
       }`}
-      style={{ borderLeftWidth: 4, borderLeftColor: notification.isRead ? '#555' : color }}
     >
       <div className="flex items-center mb-2 gap-2">
         <span

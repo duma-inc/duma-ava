@@ -11,6 +11,8 @@ interface CardButtonProps {
   onClick?: () => void;
   href?: string;
   className?: string;
+  /** Badge sobreposto no canto superior direito do card (nao afeta o tamanho). */
+  badge?: ReactNode;
 }
 
 export default function CardButton({
@@ -21,9 +23,11 @@ export default function CardButton({
   onClick,
   href,
   className = "",
+  badge,
 }: CardButtonProps) {
   const content = (
     <>
+      {badge && <span className="absolute top-2 right-2 z-10">{badge}</span>}
       {icon && <span className="text-white">{icon}</span>}
       <span className="text-white text-lg font-bold text-center">{title}</span>
       {subtitle && (
@@ -32,7 +36,7 @@ export default function CardButton({
     </>
   );
 
-  const containerClasses = `w-full min-h-[120px] rounded-2xl p-6 flex flex-col items-center justify-center gap-2 shadow-lg transition-all duration-200 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${className}`;
+  const containerClasses = `relative w-full min-h-[120px] rounded-2xl p-6 flex flex-col items-center justify-center gap-2 shadow-lg transition-all duration-200 hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${className}`;
 
   if (href) {
     return (

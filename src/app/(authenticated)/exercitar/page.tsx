@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { useExerciseContext } from '@/store/ExerciseContext';
-import { AcademicCapIcon, CalendarDaysIcon, ExclamationCircleIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { useCorrectionContext } from '@/store/CorrectionContext';
+import { AcademicCapIcon, CalendarDaysIcon, ChevronRightIcon, ExclamationCircleIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { DAILY_PLAN_COMPLETED, DAILY_PLAN_REST } from '@/types/exercise';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import CardButton from '@/components/ui/CardButton';
 import Button from '@/components/ui/Button';
 
@@ -21,6 +23,8 @@ const DAY_NAMES: Record<number, string> = {
 
 export default function ExercitarPage() {
   const { weeklyPlan, enrollments, isLoading, error } = useExerciseContext();
+  const { getCorrectionForDate, hasUnseen } = useCorrectionContext();
+  const router = useRouter();
 
   if (isLoading) {
     return (
@@ -76,6 +80,8 @@ export default function ExercitarPage() {
         ? `Concluído — ${dp.correctCount}/${dp.answeredCount} acertos`
         : 'Concluído';
 
+    const correction = getCorrectionForDate(dp.date);
+
     return {
       dateStr: dp.date,
       title: DAY_NAMES[dayOfWeek] ?? dp.date,
@@ -86,6 +92,8 @@ export default function ExercitarPage() {
       isToday,
       isCompleted,
       isRest,
+      hasCorrection: !!correction,
+      correctionUnseen: !!correction && !correction.seenByStudent,
     };
   });
 
@@ -110,8 +118,33 @@ export default function ExercitarPage() {
         Escolha o dia da semana
       </h2>
 
+      {/* Indicador in-app: ha correcoes novas nao vistas */}
+      {hasUnseen && (
+        <div className="flex flex-row items-center justify-center gap-2 -mt-2">
+          <span className="w-2 h-2 rounded-full bg-primary" />
+          <span className="text-[13px] font-bold text-primary">Você tem exercícios corrigidos</span>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         {days.map((dia) => {
+          const correctionBadge = dia.hasCorrection ? (
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/exercitar/${dia.dateStr}/correcao?dayLabel=${encodeURIComponent(dia.title)}`);
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-black/25 hover:bg-black/40 px-2 py-0.5 text-[11px] font-semibold text-white cursor-pointer transition-colors"
+            >
+              {dia.correctionUnseen && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+              Ver correção
+              <ChevronRightIcon className="w-3.5 h-3.5" />
+            </span>
+          ) : undefined;
+
           if (dia.isCompleted) {
             return (
               <CardButton
@@ -121,6 +154,7 @@ export default function ExercitarPage() {
                 color="#10B981"
                 icon={<CheckCircleIcon className="w-9 h-9 text-white" />}
                 className="cursor-default hover:brightness-100 hover:scale-100 active:scale-100"
+                badge={correctionBadge}
               />
             );
           }
@@ -134,6 +168,7 @@ export default function ExercitarPage() {
                 color="#3A3A3A"
                 icon={<MoonIcon className="w-9 h-9 text-[#5A5A5A]" />}
                 className="opacity-50 cursor-default hover:brightness-100 hover:scale-100 active:scale-100"
+                badge={correctionBadge}
               />
             );
           }
@@ -147,6 +182,7 @@ export default function ExercitarPage() {
                 subtitle={dia.subtitle}
                 color={dia.color}
                 icon={<CalendarDaysIcon className="w-9 h-9 text-white" />}
+                badge={correctionBadge}
               />
             );
           }
@@ -159,6 +195,7 @@ export default function ExercitarPage() {
               color="#3A3A3A"
               icon={<CalendarDaysIcon className="w-9 h-9 text-[#5A5A5A]" />}
               className="opacity-50 cursor-not-allowed"
+              badge={correctionBadge}
             />
           );
         })}
