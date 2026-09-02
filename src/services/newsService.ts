@@ -1,5 +1,13 @@
 import api from '../lib/api';
-import { NewsArticle, NewsCatalogResponse, NewsCategory } from '../types/news';
+import { NewsArticle, NewsQuestion, NewsCatalogResponse, NewsCategory } from '../types/news';
+
+type NewsApiQuestion = {
+  id?: string | number;
+  question?: string;
+  options?: unknown;
+  correctIndex?: unknown;
+  explanation?: string;
+};
 
 type NewsApiArticle = {
   id?: string | number;
@@ -10,6 +18,7 @@ type NewsApiArticle = {
   source?: string;
   publishedAt?: string;
   content?: string;
+  questions?: unknown;
 };
 
 type RawNewsCatalogResponse =
@@ -27,6 +36,48 @@ function normalizeCategory(value?: string): NewsCategory | null {
   }
 
   return value.trim();
+}
+
+/**
+ * O quiz e opcional e nao vem no catalogo — so em GET /news/{id}. Questao malformada e
+ * descartada individualmente: um item quebrado nao pode custar a leitura do artigo.
+ */
+function mapNewsQuestions(raw: unknown): NewsQuestion[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const questions = raw
+    .map((item, index): NewsQuestion | null => {
+      const question = item as NewsApiQuestion;
+      const statement = question?.question?.trim() || '';
+      const options = Array.isArray(question?.options)
+        ? question.options.map((option) => String(option).trim()).filter(Boolean)
+        : [];
+      const correctIndex = question?.correctIndex;
+
+      if (
+        !statement
+        || options.length < 2
+        || typeof correctIndex !== 'number'
+        || !Number.isInteger(correctIndex)
+        || correctIndex < 0
+        || correctIndex >= options.length
+      ) {
+        return null;
+      }
+
+      return {
+        id: question.id != null ? String(question.id) : `q${index + 1}`,
+        question: statement,
+        options,
+        correctIndex,
+        explanation: question.explanation?.trim() || undefined,
+      };
+    })
+    .filter((item): item is NewsQuestion => Boolean(item));
+
+  return questions.length > 0 ? questions : undefined;
 }
 
 function mapNewsArticle(article: NewsApiArticle): NewsArticle | null {
@@ -51,6 +102,7 @@ function mapNewsArticle(article: NewsApiArticle): NewsArticle | null {
     source,
     publishedAt,
     content,
+    questions: mapNewsQuestions(article.questions),
   };
 }
 

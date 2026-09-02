@@ -172,6 +172,16 @@ export default function NewsArticlePage({ params }: PageProps) {
           />
         </div>
       </div>
+
+      {/* O botao some em tela cheia, junto com o resto do cromo da leitura. */}
+      {!isFullscreen && !!article.questions?.length && (
+        <Link
+          href={`/conteudo/dumanews/${article.id}/quiz`}
+          className="w-full cursor-pointer rounded-xl bg-primary py-4 text-center text-sm font-extrabold text-text-on-primary transition-opacity hover:opacity-90"
+        >
+          Avalie sua compreensão
+        </Link>
+      )}
     </div>
   );
 }
