@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { WeeklyPlanResponse, EnrollmentResponse, Exercise, DAILY_PLAN_COMPLETED } from '../types/exercise';
-import { fetchWeeklyPlan, fetchMyEnrollments } from '../services/weeklyPlanService';
+import { fetchWeeklyPlan } from '../services/weeklyPlanService';
+import { useSkillProfile } from './SkillProfileContext';
 
 // v3: o plano passou a carregar a conclusao do dia (status COMPLETED + contadores);
 // planos cacheados no formato antigo apareceriam como pendentes.
@@ -33,7 +34,8 @@ function isPlanValid(plan: WeeklyPlanResponse): boolean {
     ...(d.reinforcementExercises ?? []),
   ]);
   const hasStaleMatching = allExercises.some(
-    ex => ex.type === 'MATCHING' && ex.options.some(o => !o.matchKey && !(o as any).match_key)
+    ex => ex.type === 'MATCHING' && ex.options.some(o =>
+      !o.matchKey && !(o as unknown as { match_key?: string }).match_key)
   );
   if (hasStaleMatching) return false;
   return true;
@@ -41,33 +43,25 @@ function isPlanValid(plan: WeeklyPlanResponse): boolean {
 
 export const ExerciseProvider = ({ children }: { children: ReactNode }) => {
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlanResponse | null>(null);
-  const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
+  const { enrollments, selectedEnrollment } = useSkillProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const loadPlan = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     try {
       setIsLoading(true);
       setError(null);
 
-      let myEnrollments: EnrollmentResponse[] = [];
-      try {
-        const enrollRes = await fetchMyEnrollments();
-        myEnrollments = enrollRes.data || [];
-      } catch (err: any) {
-        console.log('[ExerciseContext] Failed to fetch enrollments, defaulting to empty:', err.message);
-      }
-      setEnrollments(myEnrollments);
-
-      if (myEnrollments.length === 0) {
+      if (!selectedEnrollment) {
         console.log('[ExerciseContext] No enrollments found');
         setWeeklyPlan(null);
         setIsLoading(false);
         return;
       }
 
-      const activeEnrollment = myEnrollments.find(e => e.status === 'ACTIVE') || myEnrollments[0];
-      const skillId = activeEnrollment.skillId;
+      const skillId = selectedEnrollment.skillId;
 
       if (typeof window !== 'undefined') {
         const cached = localStorage.getItem(CACHE_KEY);
@@ -88,6 +82,7 @@ export const ExerciseProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('[ExerciseContext] Fetching weekly plan from API...');
       const planRes = await fetchWeeklyPlan(skillId);
+      if (generation !== loadGeneration.current) return;
       const plan = planRes.data;
       setWeeklyPlan(plan);
 
@@ -96,16 +91,17 @@ export const ExerciseProvider = ({ children }: { children: ReactNode }) => {
       }
       console.log('[ExerciseContext] Weekly plan cached successfully');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (generation !== loadGeneration.current) return;
       console.error('[ExerciseContext] Error loading plan:', err);
-      setError(err?.message || 'Erro ao carregar exercícios');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar exercícios');
     } finally {
-      setIsLoading(false);
+      if (generation === loadGeneration.current) setIsLoading(false);
     }
-  }, []);
+  }, [selectedEnrollment]);
 
   useEffect(() => {
-    loadPlan();
+    queueMicrotask(() => { void loadPlan(); });
   }, [loadPlan]);
 
   const getExercisesForDate = useCallback((dateStr: string): Exercise[] => {

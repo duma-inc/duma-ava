@@ -1,11 +1,13 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
-import { dumaQuizPacks, sentenceBuilderPacks } from "@/mocks/games";
 import { getGameDefinition } from "@/lib/gameCatalog";
+import { fetchStudentGames, StudentGame } from "@/services/gameService";
+import { useSkillProfile } from "@/store/SkillProfileContext";
+import { dumaQuizPacks, sentenceBuilderPacks } from "@/mocks/games";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,28 +15,41 @@ interface PageProps {
 
 export default function GamePacksPage({ params }: PageProps) {
   const { id } = use(params);
+  const { selectedSkill } = useSkillProfile();
   const game = getGameDefinition(id);
+  const [catalog, setCatalog] = useState<{ skillId: number | null; games: StudentGame[] }>({ skillId: null, games: [] });
+
+  useEffect(() => {
+    const skillId = selectedSkill?.id ?? null;
+    let cancelled = false;
+    void fetchStudentGames()
+      .then((games) => { if (!cancelled) setCatalog({ skillId, games }); })
+      .catch(() => { if (!cancelled) setCatalog({ skillId, games: [] }); });
+    return () => { cancelled = true; };
+  }, [selectedSkill?.id]);
+
   const packs = useMemo(() => {
-    if (id === "sentence-builder") {
-      return sentenceBuilderPacks.map((pack) => ({
-        id: pack.id,
-        weekLabel: pack.weekLabel,
-        description: pack.description,
-        itemCount: `${pack.sentences.length} frases`,
-      }));
-    }
-
-    if (id === "duma-quiz") {
-      return dumaQuizPacks.map((pack) => ({
-        id: pack.id,
-        weekLabel: pack.weekLabel,
-        description: pack.description,
-        itemCount: `${pack.questions.length} perguntas`,
-      }));
-    }
-
-    return [];
-  }, [id]);
+    const studentGames = catalog.skillId === (selectedSkill?.id ?? null) ? catalog.games : [];
+    const expectedKind = id === "sentence-builder" ? "SENTENCE_BUILDER" : id === "duma-quiz" ? "QUIZ" : null;
+    if (!expectedKind) return [];
+    const serverPacks = studentGames.filter((item) => item.type === "NATIVE" && item.nativeKind === expectedKind).map((item) => {
+      const payload = (item.payload || {}) as { sentences?: unknown[]; questions?: unknown[] };
+      const count = expectedKind === "SENTENCE_BUILDER" ? payload.sentences?.length ?? 0 : payload.questions?.length ?? 0;
+      return {
+        id: item.id,
+        weekLabel: item.title,
+        description: item.description || "Prática da skill selecionada.",
+        itemCount: expectedKind === "SENTENCE_BUILDER" ? `${count} frases` : `${count} perguntas`,
+      };
+    });
+    if (serverPacks.length > 0 || !selectedSkill?.contentLocale?.startsWith("en")) return serverPacks;
+    return (id === "sentence-builder" ? sentenceBuilderPacks : dumaQuizPacks).map((pack) => ({
+      id: pack.id,
+      weekLabel: pack.weekLabel,
+      description: pack.description,
+      itemCount: "sentences" in pack ? `${pack.sentences.length} frases` : `${pack.questions.length} perguntas`,
+    }));
+  }, [catalog, id, selectedSkill?.id, selectedSkill?.contentLocale]);
 
   if (!game) {
     return (

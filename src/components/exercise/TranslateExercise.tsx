@@ -7,9 +7,9 @@ const TARGET_LANGUAGE_HINTS: { pattern: RegExp; label: string }[] = [
   { pattern: /(?:to|para o|para)\s+(?:ingl[eê]s|english)/i, label: 'Traduza para o inglês' },
 ];
 
-/** Deduz o idioma alvo a partir do enunciado; mantém o inglês como padrão quando não há indicação */
+/** Deduz o idioma alvo a partir do enunciado; usa uma descrição neutra quando não há indicação. */
 function getTranslateHint(description: string): string {
-  return TARGET_LANGUAGE_HINTS.find((h) => h.pattern.test(description))?.label ?? 'Traduza para o inglês';
+  return TARGET_LANGUAGE_HINTS.find((h) => h.pattern.test(description))?.label ?? 'Traduza para o idioma estudado';
 }
 
 interface Props {

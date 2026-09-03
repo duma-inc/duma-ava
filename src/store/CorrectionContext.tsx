@@ -1,11 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Correction } from '../types/correction';
 import { fetchMyCorrections, markCorrectionSeen } from '../services/correctionService';
+import { useSkillProfile } from './SkillProfileContext';
 
 // Bump this version whenever the correction shape changes to invalidate old caches.
-const CACHE_KEY = '@corrections_v1';
+const cacheKey = (skillId?: number) => `@corrections_v2:${skillId ?? 'none'}`;
 
 interface CorrectionContextData {
   corrections: Correction[];
@@ -31,28 +32,33 @@ function parseCached(raw: string): Correction[] | null {
 }
 
 export const CorrectionProvider = ({ children }: { children: ReactNode }) => {
+  const { selectedSkill } = useSkillProfile();
+  const selectedSkillId = selectedSkill?.id;
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
 
   const persist = useCallback((list: Correction[]) => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(list));
+        localStorage.setItem(cacheKey(selectedSkillId), JSON.stringify(list));
       } catch {
         // cache best-effort
       }
     }
-  }, []);
+  }, [selectedSkillId]);
 
   const loadCorrections = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     try {
       setIsLoading(true);
       setError(null);
 
       // Mostra o cache imediatamente (evita tela vazia ao abrir), depois revalida com a API.
       if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem(CACHE_KEY);
+        setCorrections([]);
+        const cached = localStorage.getItem(cacheKey(selectedSkillId));
         if (cached) {
           const parsed = parseCached(cached);
           if (parsed) setCorrections(parsed);
@@ -60,20 +66,22 @@ export const CorrectionProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const res = await fetchMyCorrections();
+      if (generation !== loadGeneration.current) return;
       const list = res.data || [];
       setCorrections(list);
       persist(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (generation !== loadGeneration.current) return;
       console.error('[CorrectionContext] Erro ao carregar correcoes:', err);
       // Nao apaga o que ja veio do cache; so registra o erro.
-      setError(err?.message || 'Erro ao carregar correcoes');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar correcoes');
     } finally {
-      setIsLoading(false);
+      if (generation === loadGeneration.current) setIsLoading(false);
     }
-  }, [persist]);
+  }, [persist, selectedSkillId]);
 
   useEffect(() => {
-    loadCorrections();
+    queueMicrotask(() => { void loadCorrections(); });
   }, [loadCorrections]);
 
   const getCorrectionForDate = useCallback(
@@ -102,10 +110,10 @@ export const CorrectionProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshCorrections = useCallback(async () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(cacheKey(selectedSkillId));
     }
     await loadCorrections();
-  }, [loadCorrections]);
+  }, [loadCorrections, selectedSkillId]);
 
   return (
     <CorrectionContext.Provider

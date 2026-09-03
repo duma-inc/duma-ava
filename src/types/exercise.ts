@@ -107,10 +107,14 @@ export const NON_CORRECTABLE_TYPES: ExerciseType[] = ['ESSAY', 'SHORT_ANSWER', '
  *
  * NAO usar `exercise.language` para isso. Esse campo guarda o idioma DO ALUNO
  * (`pt-BR` em praticamente toda a base) e serve para enunciado e traducao — o que
- * se ouve e se pronuncia e o conteudo do curso, que e em ingles. Usa-lo fazia o
- * leitor narrar texto em ingles com voz portuguesa.
+ * se ouve e se pronuncia e o conteúdo da skill ativa. Usá-lo fazia o leitor
+ * narrar o idioma estudado com voz portuguesa.
  */
-export const SPOKEN_CONTENT_LANGUAGE = 'en-US';
+export let SPOKEN_CONTENT_LANGUAGE = 'en-US';
+
+export function setSpokenContentLanguage(locale: string) {
+  SPOKEN_CONTENT_LANGUAGE = locale || 'en-US';
+}
 
 /**
  * Tipos cujo corpo ja exibe o enunciado: o header do topo repetiria (SPEAKING,

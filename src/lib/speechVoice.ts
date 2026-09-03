@@ -1,7 +1,7 @@
 import { SPOKEN_CONTENT_LANGUAGE } from "@/types/exercise";
 
 /**
- * Escolhe a melhor voz em ingles disponivel no navegador.
+ * Escolhe a melhor voz disponível para o idioma da skill ativa.
  *
  * Definir so `utterance.lang` deixa a escolha para o navegador, que costuma cair
  * na primeira voz do idioma — no Linux normalmente o eSpeak, bem robotico. Os
@@ -13,7 +13,7 @@ import { SPOKEN_CONTENT_LANGUAGE } from "@/types/exercise";
  * de vozes neurais pesam mais.
  */
 
-const BASE_LANG = SPOKEN_CONTENT_LANGUAGE.split("-")[0].toLowerCase(); // 'en'
+const baseLang = () => SPOKEN_CONTENT_LANGUAGE.split("-")[0].toLowerCase();
 
 /** Marcas presentes nos nomes das vozes neurais/premium dos principais sistemas. */
 const HIGH_QUALITY_HINTS = /google|natural|neural|enhanced|premium|siri|samantha/i;
@@ -30,7 +30,7 @@ function score(voice: SpeechSynthesisVoice) {
 
   const lang = normalizeLang(voice.lang);
   if (lang === SPOKEN_CONTENT_LANGUAGE.toLowerCase()) s += 4;
-  else if (lang.startsWith(BASE_LANG)) s += 2;
+  else if (lang.startsWith(baseLang())) s += 2;
 
   if (voice.default) s += 1;
   return s;
@@ -68,12 +68,17 @@ function getVoices(): Promise<SpeechSynthesisVoice[]> {
 }
 
 let cache: Promise<SpeechSynthesisVoice | undefined> | null = null;
+let cachedLocale = "";
 
 export function resolveSpokenVoice(): Promise<SpeechSynthesisVoice | undefined> {
+  if (cachedLocale !== SPOKEN_CONTENT_LANGUAGE) {
+    cache = null;
+    cachedLocale = SPOKEN_CONTENT_LANGUAGE;
+  }
   if (!cache) {
     cache = (async () => {
       const voices = await getVoices();
-      const candidates = voices.filter((v) => normalizeLang(v.lang).startsWith(BASE_LANG));
+      const candidates = voices.filter((v) => normalizeLang(v.lang).startsWith(baseLang()));
       if (candidates.length === 0) return undefined;
       return candidates.reduce((a, b) => (score(b) > score(a) ? b : a));
     })();

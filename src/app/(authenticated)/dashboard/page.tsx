@@ -4,15 +4,12 @@ import { useEffect, useState } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import ProgressBar from "@/components/ui/ProgressBar";
-import BorderedCard from "@/components/ui/BorderedCard";
 import CardButton from "@/components/ui/CardButton";
 import {
   Cog6ToothIcon,
   ArrowRightStartOnRectangleIcon,
   ChevronRightIcon,
-  CalculatorIcon,
   BookOpenIcon,
-  GlobeAltIcon,
   SparklesIcon,
   CheckCircleIcon,
   XMarkIcon,
@@ -29,6 +26,8 @@ import { fetchMeetingsAgenda } from "@/services/meetingService";
 import { AgendaEvent } from "@/components/ui/EventCard";
 import MeetingDetailsModal from "@/components/ui/MeetingDetailsModal";
 import api from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { useSkillProfile } from "@/store/SkillProfileContext";
 
 interface SkillSummary {
   id: number;
@@ -71,8 +70,10 @@ interface PlanSummary {
 
 export default function DashboardPage() {
   const { enrollments, refreshPlan } = useExerciseContext();
+  const { skills, selectedSkill: activeSkill, selectedEnrollment, selectSkill, refreshProfiles } = useSkillProfile();
+  const activeSkillId = activeSkill?.id;
+  const router = useRouter();
   const { data: session } = useSession();
-  const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,21 +88,23 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [skillsRes, plansRes] = await Promise.all([
-          api.get("/skills"),
+        const [plansRes] = await Promise.all([
           api.get("/plans"),
         ]);
-        setSkills(skillsRes.data || []);
         setPlans(plansRes.data || []);
       } catch (err) {
         console.error("[Dashboard] Error fetching initial data:", err);
       }
     }
     loadData();
-  }, []);
+  }, [activeSkillId]);
 
   useEffect(() => {
     async function loadDueFlashcards() {
+      if (!activeSkillId) {
+        setDueCount(0);
+        return;
+      }
       try {
         const { data } = await fetchDueFlashcards();
         setDueCount(data?.length ?? 0);
@@ -111,7 +114,7 @@ export default function DashboardPage() {
       }
     }
     loadDueFlashcards();
-  }, []);
+  }, [activeSkillId]);
 
   // O given_name do Keycloak é a fonte de verdade; a sessão serve de valor imediato
   useEffect(() => {
@@ -131,6 +134,10 @@ export default function DashboardPage() {
   // Encontro de hoje: a agenda já vem ordenada por horário
   useEffect(() => {
     async function loadTodayMeeting() {
+      if (!activeSkillId) {
+        setTodayMeeting(null);
+        return;
+      }
       try {
         const events = await fetchMeetingsAgenda();
         const today = todayKey();
@@ -149,14 +156,15 @@ export default function DashboardPage() {
       }
     }
     loadTodayMeeting();
-  }, []);
+  }, [activeSkillId]);
 
   // Etapa atual da matrícula ativa, exibida como tag ao lado do nome
   useEffect(() => {
-    const activeEnrollment =
-      enrollments.find((e) => e.status === "ACTIVE") ?? enrollments[0];
-    const stageId = activeEnrollment?.currentStageId;
-    if (!stageId) return;
+    const stageId = selectedEnrollment?.currentStageId;
+    if (!stageId) {
+      queueMicrotask(() => setStageName(""));
+      return;
+    }
 
     let cancelled = false;
     async function loadStage() {
@@ -172,7 +180,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [enrollments]);
+  }, [selectedEnrollment]);
 
   const sessionFirstName = session?.user?.name?.trim().split(" ")[0] ?? "";
   const firstName = profileFirstName || sessionFirstName || "Estudante";
@@ -183,6 +191,7 @@ export default function DashboardPage() {
       await api.post(`/enrollments/start`, null, {
         params: { skillId, planId },
       });
+      await refreshProfiles();
       await refreshPlan();
       setIsModalOpen(false);
       setSelectedSkill(null);
@@ -199,16 +208,13 @@ export default function DashboardPage() {
     return {
       ...enrollment,
       title: skill?.name || `Skill #${enrollment.skillId}`,
+      iconUrl: skill?.iconUrl,
       progress: Math.max(
         0,
         Math.min(100, Math.round(enrollment.progressPercentage ?? 0))
       ),
     };
   });
-
-  const availableSkillsList = skills.filter(
-    (skill) => !enrollments.some((e) => e.skillId === skill.id)
-  );
 
   return (
     <div className="relative">
@@ -321,7 +327,7 @@ export default function DashboardPage() {
         />
         <CardButton
           title="DumaNews"
-          subtitle="Notícias globais"
+          subtitle="Notícias da sua skill"
           color="#D88A00"
           icon={<NewspaperIcon className="w-9 h-9" />}
           href="/conteudo/dumanews"
@@ -336,15 +342,36 @@ export default function DashboardPage() {
           </h2>
           <div className="flex flex-col gap-2.5">
             {enrolledSkillsList.map((curso) => (
-              <Link href="/exercitar" key={curso.id} className="w-full">
+              <button
+                type="button"
+                key={curso.id}
+                className="w-full text-left"
+                aria-pressed={activeSkill?.id === curso.skillId}
+                onClick={() => {
+                  selectSkill(curso.skillId);
+                  router.push("/exercitar");
+                }}
+              >
                 <div
-                  className="bg-surface rounded-xl p-4 flex items-center gap-3.5 border border-primary-darker transition-all duration-200 hover:border-primary-dark hover:scale-[1.01] cursor-pointer"
+                  className={`bg-surface rounded-xl p-4 flex items-center gap-3.5 border transition-all duration-200 hover:border-primary-dark hover:scale-[1.01] cursor-pointer ${activeSkill?.id === curso.skillId ? "border-primary" : "border-primary-darker"}`}
                 >
                   <span
-                    className="rounded-xl p-2.5 flex items-center justify-center bg-primary/20"
+                    className="rounded-xl p-1 flex items-center justify-center bg-primary/20 shrink-0 w-11 h-11 overflow-hidden"
                   >
+                    {curso.iconUrl ? (
+                      <img
+                        src={curso.iconUrl}
+                        alt={curso.title}
+                        className="w-9 h-9 object-contain rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove("hidden");
+                        }}
+                      />
+                    ) : null}
                     <BookOpenIcon
-                      className="w-6 h-6 text-primary"
+                      className={`w-7 h-7 text-primary ${curso.iconUrl ? "hidden" : ""}`}
                     />
                   </span>
                   <div className="flex-1 text-left">
@@ -360,7 +387,7 @@ export default function DashboardPage() {
                     className="w-[18px] h-[18px] text-primary ml-2"
                   />
                 </div>
-              </Link>
+              </button>
             ))}
           </div>
         </>

@@ -10,6 +10,12 @@ const api = axios.create({
   },
 });
 
+let activeSkillId: number | null = null;
+
+export function setApiSkillId(skillId: number | null) {
+  activeSkillId = skillId;
+}
+
 api.interceptors.request.use(
   async (config) => {
     if (typeof window !== "undefined") {
@@ -17,6 +23,9 @@ api.interceptors.request.use(
       if (session?.accessToken) {
         config.headers.Authorization = `Bearer ${session.accessToken}`;
       }
+    }
+    if (activeSkillId != null) {
+      config.params = { skillId: activeSkillId, ...(config.params || {}) };
     }
     return config;
   },

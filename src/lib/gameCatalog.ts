@@ -20,7 +20,7 @@ export const gameCatalog: ContentGameDefinition[] = [
     id: "sentence-builder",
     title: "Sentence Builder",
     description:
-      "Monte frases em inglês desembaralhando as palavras. Treine estrutura e fluência semana a semana.",
+      "Monte frases no idioma estudado desembaralhando as palavras. Treine estrutura e fluência semana a semana.",
     tag: "Gramática",
     imageSrc: "/assets/games/sbGame.png",
     accentColorClass: "text-primary",
@@ -33,7 +33,7 @@ export const gameCatalog: ContentGameDefinition[] = [
     id: "duma-quiz",
     title: "Duma Quiz",
     description:
-      "Responda perguntas sobre inglês no menor tempo possível. Teste vocabulário, gramática e expressões.",
+      "Responda perguntas no menor tempo possível. Teste vocabulário, gramática e expressões.",
     tag: "Quiz",
     imageSrc: "/assets/games/DumaQuiz.png",
     accentColorClass: "text-primary-dark",

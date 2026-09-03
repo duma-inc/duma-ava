@@ -172,8 +172,8 @@ export default function WordModal({ word, contextSentence, onClose }: Props) {
                         type="button"
                         onClick={handleSpeakWord}
                         className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-primary-darker bg-[#1C1C1C] text-primary transition-all hover:border-primary hover:text-primary-dark"
-                        title={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
-                        aria-label={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir palavra em inglês'}
+                        title={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir pronúncia'}
+                        aria-label={isSpeaking ? 'Parar leitura da palavra' : 'Ouvir pronúncia'}
                       >
                         {isSpeaking ? (
                           <PauseIcon className="h-4.5 w-4.5" />

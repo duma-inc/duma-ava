@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowPathIcon,
@@ -9,8 +9,10 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { DumaQuizPack, DumaQuizQuestion, SentenceBuilderPack } from "@/types/game";
+import { fetchStudentGame, StudentGame } from "@/services/gameService";
+import { useSkillProfile } from "@/store/SkillProfileContext";
 import { dumaQuizPacks, sentenceBuilderPacks } from "@/mocks/games";
-import { DumaQuizQuestion } from "@/types/game";
 
 interface PageProps {
   params: Promise<{ id: string; packId: string }>;
@@ -22,13 +24,41 @@ function shuffleWords(sentence: string) {
 
 export default function GameExecutionPage({ params }: PageProps) {
   const { id, packId } = use(params);
+  const { selectedSkill } = useSkillProfile();
+  const isEnglish = selectedSkill?.contentLocale?.startsWith("en");
+  const localSentencePack = isEnglish ? sentenceBuilderPacks.find((item) => item.id === packId) : undefined;
+  const localQuizPack = isEnglish ? dumaQuizPacks.find((item) => item.id === packId) : undefined;
+  const [loaded, setLoaded] = useState<{ skillId: number | null; game: StudentGame | null }>({ skillId: null, game: null });
 
-  if (id === "sentence-builder") {
-    return <SentenceBuilderPackPage packId={packId} />;
+  useEffect(() => {
+    if (localSentencePack || localQuizPack) return;
+    const skillId = selectedSkill?.id ?? null;
+    let cancelled = false;
+    void fetchStudentGame(packId)
+      .then((game) => { if (!cancelled) setLoaded({ skillId, game }); })
+      .catch(() => { if (!cancelled) setLoaded({ skillId, game: null }); });
+    return () => { cancelled = true; };
+  }, [packId, selectedSkill?.id, localSentencePack, localQuizPack]);
+
+  const game = loaded.skillId === (selectedSkill?.id ?? null) ? loaded.game : null;
+  if (id === "sentence-builder" && localSentencePack) {
+    return <SentenceBuilderPackPage pack={localSentencePack} />;
   }
 
-  if (id === "duma-quiz") {
-    return <DumaQuizPackPage packId={packId} />;
+  if (id === "duma-quiz" && localQuizPack) {
+    return <DumaQuizPackPage pack={localQuizPack} />;
+  }
+
+  if (!game) {
+    return <div className="flex min-h-[60vh] items-center justify-center text-sm text-primary">Carregando game...</div>;
+  }
+
+  if (id === "sentence-builder" && game.nativeKind === "SENTENCE_BUILDER") {
+    return <SentenceBuilderPackPage pack={toSentenceBuilderPack(game)} />;
+  }
+
+  if (id === "duma-quiz" && game.nativeKind === "QUIZ") {
+    return <DumaQuizPackPage pack={toQuizPack(game)} />;
   }
 
   return (
@@ -41,11 +71,27 @@ export default function GameExecutionPage({ params }: PageProps) {
   );
 }
 
-function SentenceBuilderPackPage({ packId }: { packId: string }) {
-  const pack = useMemo(
-    () => sentenceBuilderPacks.find((item) => item.id === packId),
-    [packId]
-  );
+function toSentenceBuilderPack(game: StudentGame): SentenceBuilderPack {
+  return {
+    id: game.id,
+    title: game.title,
+    weekLabel: game.title,
+    description: game.description || "",
+    sentences: ((game.payload as { sentences?: SentenceBuilderPack["sentences"] } | null)?.sentences || []),
+  };
+}
+
+function toQuizPack(game: StudentGame): DumaQuizPack {
+  return {
+    id: game.id,
+    title: game.title,
+    weekLabel: game.title,
+    description: game.description || "",
+    questions: ((game.payload as { questions?: DumaQuizQuestion[] } | null)?.questions || []),
+  };
+}
+
+function SentenceBuilderPackPage({ pack }: { pack: SentenceBuilderPack }) {
   const sentences = pack?.sentences ?? [];
   const [currentIdx, setCurrentIdx] = useState(0);
   const [score, setScore] = useState(0);
@@ -297,8 +343,7 @@ function SentenceBuilderRound({
   );
 }
 
-function DumaQuizPackPage({ packId }: { packId: string }) {
-  const pack = useMemo(() => dumaQuizPacks.find((item) => item.id === packId), [packId]);
+function DumaQuizPackPage({ pack }: { pack: DumaQuizPack }) {
   const questions: DumaQuizQuestion[] = pack?.questions ?? [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);

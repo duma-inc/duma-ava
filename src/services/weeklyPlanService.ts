@@ -2,7 +2,9 @@ import api from '../lib/api';
 import { WeeklyPlanResponse, EnrollmentResponse, AttemptPayload } from '../types/exercise';
 
 export const fetchWeeklyPlan = async (skillId: string | number) => {
-  const res = await api.get<WeeklyPlanResponse>(`/weekly-plans/current?skillId=${skillId}`);
+  const res = await api.get<WeeklyPlanResponse>('/weekly-plans/current', {
+    params: { skillId },
+  });
   const allExercises = res.data.dailyPlans.flatMap(d => [...d.exercises, ...(d.reinforcementExercises ?? [])]);
   const matching = allExercises.find(e => e.type === 'MATCHING');
   if (matching) {
@@ -20,4 +22,4 @@ export const fetchMyEnrollments = () =>
  * mesma data responde 409.
  */
 export const submitAttemptsBatch = (attempts: AttemptPayload[], planDate: string) =>
-  api.post(`/attempts/batch?planDate=${encodeURIComponent(planDate)}`, attempts);
+  api.post('/attempts/batch', attempts, { params: { planDate } });

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import api from '../lib/api';
+import { useSkillProfile } from './SkillProfileContext';
 
 interface FlashcardContextData {
   wordsSet: Set<string>;
@@ -21,22 +22,28 @@ function normalizeWord(word: string) {
 
 export const FlashcardProvider = ({ children }: { children: ReactNode }) => {
   const { status } = useSession();
+  const { selectedSkill } = useSkillProfile();
+  const selectedSkillId = selectedSkill?.id;
   const [wordsSet, setWordsSet] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const loadGeneration = useRef(0);
 
   const refreshWords = useCallback(async () => {
-    if (status !== 'authenticated') return;
+    if (status !== 'authenticated' || selectedSkillId == null) return;
+    const generation = ++loadGeneration.current;
 
     setIsLoading(true);
     try {
       const { data } = await api.get<string[]>('/flashcards/words');
+      if (generation !== loadGeneration.current) return;
       setWordsSet(new Set(data.map(normalizeWord)));
     } catch (error) {
+      if (generation !== loadGeneration.current) return;
       console.error('[FlashcardContext] Error loading words:', error);
     } finally {
-      setIsLoading(false);
+      if (generation === loadGeneration.current) setIsLoading(false);
     }
-  }, [status]);
+  }, [status, selectedSkillId]);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
