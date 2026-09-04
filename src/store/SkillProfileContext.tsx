@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import api, { setApiSkillId } from "@/lib/api";
 import { setSpokenContentLanguage } from "@/types/exercise";
 import type { EnrollmentResponse } from "@/types/exercise";
@@ -20,6 +20,7 @@ interface SkillProfileContextValue {
   enrollments: EnrollmentResponse[];
   selectedSkill: SkillProfile | null;
   selectedEnrollment: EnrollmentResponse | null;
+  skillChangeNotice: string | null;
   isLoading: boolean;
   selectSkill(skillId: number): void;
   refreshProfiles(): Promise<void>;
@@ -31,7 +32,9 @@ export function SkillProfileProvider({ children }: { children: React.ReactNode }
   const [skills, setSkills] = useState<SkillProfile[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
+  const [skillChangeNotice, setSkillChangeNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const noticeTimerRef = useRef<number | null>(null);
 
   const applySelection = useCallback((skillId: number | null) => {
     setSelectedSkillId(skillId);
@@ -63,6 +66,10 @@ export function SkillProfileProvider({ children }: { children: React.ReactNode }
     return () => window.clearTimeout(timer);
   }, [refreshProfiles]);
 
+  useEffect(() => () => {
+    if (noticeTimerRef.current != null) window.clearTimeout(noticeTimerRef.current);
+  }, []);
+
   const selectedSkill = skills.find((item) => item.id === selectedSkillId) ?? null;
   const selectedEnrollment = enrollments.find((item) => item.skillId === selectedSkillId) ?? null;
 
@@ -70,13 +77,22 @@ export function SkillProfileProvider({ children }: { children: React.ReactNode }
     setSpokenContentLanguage(selectedSkill?.contentLocale || "en-US");
   }, [selectedSkill]);
 
+  const selectSkill = useCallback((skillId: number) => {
+    if (skillId === selectedSkillId) return;
+    const target = skills.find((item) => item.id === skillId);
+    if (!target || !enrollments.some((item) => item.skillId === skillId)) return;
+
+    applySelection(skillId);
+    setSkillChangeNotice(target.name);
+    if (noticeTimerRef.current != null) window.clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = window.setTimeout(() => setSkillChangeNotice(null), 3500);
+  }, [applySelection, enrollments, selectedSkillId, skills]);
+
   const value = useMemo(() => ({
-    skills, enrollments, selectedSkill, selectedEnrollment, isLoading,
-    selectSkill: (skillId: number) => {
-      if (enrollments.some((item) => item.skillId === skillId)) applySelection(skillId);
-    },
+    skills, enrollments, selectedSkill, selectedEnrollment, skillChangeNotice, isLoading,
+    selectSkill,
     refreshProfiles,
-  }), [skills, enrollments, selectedSkill, selectedEnrollment, isLoading, applySelection, refreshProfiles]);
+  }), [skills, enrollments, selectedSkill, selectedEnrollment, skillChangeNotice, isLoading, selectSkill, refreshProfiles]);
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-background text-primary">Carregando suas skills...</div>;

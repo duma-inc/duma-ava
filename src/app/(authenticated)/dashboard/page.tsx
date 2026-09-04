@@ -26,7 +26,6 @@ import { fetchMeetingsAgenda } from "@/services/meetingService";
 import { AgendaEvent } from "@/components/ui/EventCard";
 import MeetingDetailsModal from "@/components/ui/MeetingDetailsModal";
 import api from "@/lib/api";
-import { useRouter } from "next/navigation";
 import { useSkillProfile } from "@/store/SkillProfileContext";
 
 interface SkillSummary {
@@ -70,9 +69,8 @@ interface PlanSummary {
 
 export default function DashboardPage() {
   const { enrollments, refreshPlan } = useExerciseContext();
-  const { skills, selectedSkill: activeSkill, selectedEnrollment, selectSkill, refreshProfiles } = useSkillProfile();
+  const { skills, selectedSkill: activeSkill, selectedEnrollment, skillChangeNotice, selectSkill, refreshProfiles } = useSkillProfile();
   const activeSkillId = activeSkill?.id;
-  const router = useRouter();
   const { data: session } = useSession();
   const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [selectedSkill, setSelectedSkill] = useState<SkillSummary | null>(null);
@@ -218,6 +216,17 @@ export default function DashboardPage() {
 
   return (
     <div className="relative">
+      {skillChangeNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 flex items-center gap-2 rounded-xl border border-primary bg-primary/15 px-4 py-3 text-sm font-semibold text-text-primary"
+        >
+          <CheckCircleIcon className="h-5 w-5 shrink-0 text-primary" />
+          Ambiente alterado para a skill {skillChangeNotice}.
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2 min-w-0">
@@ -349,12 +358,16 @@ export default function DashboardPage() {
                 aria-pressed={activeSkill?.id === curso.skillId}
                 onClick={() => {
                   selectSkill(curso.skillId);
-                  router.push("/exercitar");
                 }}
               >
                 <div
-                  className={`bg-surface rounded-xl p-4 flex items-center gap-3.5 border transition-all duration-200 hover:border-primary-dark hover:scale-[1.01] cursor-pointer ${activeSkill?.id === curso.skillId ? "border-primary" : "border-primary-darker"}`}
+                  className={`relative bg-surface rounded-xl p-4 flex items-center gap-3.5 border transition-all duration-200 hover:border-primary-dark hover:scale-[1.01] cursor-pointer ${activeSkill?.id === curso.skillId ? "border-primary" : "border-primary-darker"}`}
                 >
+                  {activeSkill?.id === curso.skillId && (
+                    <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-text-on-primary">
+                      ATUAL
+                    </span>
+                  )}
                   <span
                     className="rounded-xl p-1 flex items-center justify-center bg-primary/20 shrink-0 w-11 h-11 overflow-hidden"
                   >
