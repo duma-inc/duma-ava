@@ -201,18 +201,20 @@ export default function DashboardPage() {
     }
   };
 
-  const enrolledSkillsList = enrollments.map((enrollment) => {
-    const skill = skills.find((s) => s.id === enrollment.skillId);
-    return {
-      ...enrollment,
-      title: skill?.name || `Skill #${enrollment.skillId}`,
-      iconUrl: skill?.iconUrl,
-      progress: Math.max(
-        0,
-        Math.min(100, Math.round(enrollment.progressPercentage ?? 0))
-      ),
-    };
-  });
+  const enrolledSkillsList = enrollments
+    .map((enrollment) => {
+      const skill = skills.find((s) => s.id === enrollment.skillId);
+      return {
+        ...enrollment,
+        title: skill?.name || `Skill #${enrollment.skillId}`,
+        iconUrl: skill?.iconUrl,
+        progress: Math.max(
+          0,
+          Math.min(100, Math.round(enrollment.progressPercentage ?? 0))
+        ),
+      };
+    })
+    .sort((a, b) => Number(b.skillId === activeSkillId) - Number(a.skillId === activeSkillId));
 
   return (
     <div className="relative">
