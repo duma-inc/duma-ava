@@ -9,7 +9,7 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'TUTOR_FEEDBACK' | 'EXERCISE_SUBMITTED' | 'TEST_COMPLETED' | 'GENERAL';
+  type: 'TUTOR_FEEDBACK' | 'EXERCISE_SUBMITTED' | 'TEST_COMPLETED' | 'GENERAL' | 'MEETING_REMINDER';
   referenceId?: string;
   isRead: boolean;
   createdAt: string;
@@ -28,6 +28,7 @@ const typeConfig: Record<
   EXERCISE_SUBMITTED: { Icon: CheckCircleIcon, color: '#4CAF50', bg: '#4CAF5022' },
   TEST_COMPLETED: { Icon: SparklesIcon, color: '#9C27B0', bg: '#9C27B022' },
   GENERAL: { Icon: InformationCircleIcon, color: '#2196F3', bg: '#2196F322' },
+  MEETING_REMINDER: { Icon: SparklesIcon, color: '#FDA91E', bg: '#FDA91E22' },
 };
 
 export default function NotificationCard({ notification, onRead }: NotificationCardProps) {
